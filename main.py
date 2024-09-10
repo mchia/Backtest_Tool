@@ -1,7 +1,6 @@
 import matplotlib
 import backtrader as bt
 import pandas as pd
-import support as s
 import yfinance as yf
 import trading_strategies as sb
 import ttkbootstrap as tb
@@ -14,6 +13,12 @@ from data_sourcer import DataSourcer
 from backtrade_engine import BacktraderEngine, BackPlotter
 
 matplotlib.use("TkAgg")
+
+intervals: dict = {
+    "Daily": "1d",
+    "Weekly": "1wk",
+    "Monthly": "1mo"
+    }
 
 class MainWindow:
     def __init__(self) -> None:
@@ -56,7 +61,7 @@ class MainWindow:
         self.interval_label: tb.Label = tb.Label(master=self.selection_pane, text='Interval', font=('Segoe UI', 16 , 'bold'), anchor='w')
         self.interval_label.pack(anchor='w', pady=(15, 0))
 
-        self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(s.intervals.keys()), width=19)
+        self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(intervals.keys()), width=19)
         self.interval.pack(anchor='w', pady=5)
         self.interval.insert(0, 'Daily')
 
@@ -135,7 +140,7 @@ class MainWindow:
                 'Strategy': self.base_strategies.get()
             }
 
-            selected_interval: str|None = s.intervals.get(fields['Interval'])
+            selected_interval: str|None = intervals.get(fields['Interval'])
             selected_strategy: str|None  = sb.strategies_dict.get(fields['Strategy'])
             balance: str|None = fields['Starting Balance']
             selected_balance: int|None = int(balance) if balance else None
@@ -204,8 +209,8 @@ class MainWindow:
             "Ticker": stock_info.get("symbol"),
             "Industry": stock_info.get("industry"),
             "Sector": stock_info.get("sector"),
-            "Market Cap": s.value_formater(value=stock_info.get("marketCap")),
-            "Volume": s.value_formater(value=stock_info.get("volume")),
+            "Market Cap": stock_info.get("marketCap"),
+            "Volume": stock_info.get("volume"),
             # "Financials": stock_info.financials if stock_info.financials is not None else "No financials available"
         }
 
