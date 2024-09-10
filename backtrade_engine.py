@@ -8,6 +8,28 @@ from unittest.mock import patch
 patch.object(target=bt.Cerebro, attribute='plot', new=cv.patched_plot).start()
 
 class BacktraderEngine:
+    """
+    Class to control the execution of backtests through Backtraders Cerebro engine.
+
+    Attributes
+    ----------
+    datafeed : pd.DataFrame
+        A Pandas DataFrame containing the historical stock data to be used for backtesting.
+    ticker : str
+        The stock ticker symbol (e.g., 'TSLA' for Tesla, 'AAPL' for Apple).
+    strategy : str
+        The trading strategy to be applied in the backtest (e.g., MACD, RSI, Golden Crossover).
+    interval : str
+        The time interval for the data (e.g., 'Daily', 'Weekly').
+    cerebro : bt.Cerebro
+        An instance of the Backtrader cerebro engine, configured with the given parameters.
+
+    Methods
+    -------
+    execute() -> bt.Cerebro
+        Configures the cerebro engine with the provided datafeed and strategy, runs the backtest,
+        and returns the cerebro instance.
+    """
     def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str) -> None:
         """
         Initializes the cerebro engine with a capital, datafeed, ticker, and strategy.
@@ -55,6 +77,22 @@ class BacktraderEngine:
         return self.cerebro
 
 class BackPlotter:
+    """
+    Class to control the visualization of trades executed by BacktraderEngine.
+
+    Attributes
+    ----------
+    cerebro : bt.Cerebro
+        An instance of the Backtrader cerebro engine that has already completed backtesting.
+    
+    Methods
+    -------
+    plot_settings() -> None
+        Adjusts the visual appearance of the plot, setting the color for axes, labels, and ticks.
+    
+    bt_plot() -> plt.Figure
+        Generates and returns a matplotlib figure object that visualizes the backtest results.
+    """
     def __init__(self, bt_instance: bt.Cerebro) -> None:
         """
         Utilizes a cerebro instance to display a visual representation of trades performed by the backtest engine.
@@ -90,9 +128,7 @@ class BackPlotter:
     def bt_plot(self) -> plt.Figure:
         """
         Plots the results of the backtest using the active cerebro instance.
-
-        The plot will show candlestick charts, with custom colors for up and down bars, and
-        no grid or volume overlay.
+        Utilises a patched version of cerebros plot method, which prevents the plot from automatically opening in a new window.
 
         Returns
         -------

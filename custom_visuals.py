@@ -2,11 +2,11 @@ from backtrader import Observer, observers
 
 def patched_plot(self, plotter=None, numfigs=1, iplot=True, start=None, end=None,
                 width=16, height=9, dpi=300, tight=True, use=None, **kwargs):
-    '''
-    This function is the exact same as cerebro.plot() with the exception of plotter.show() being removed.
-    plotter.show() will always open a new window for any plot - this is by default in matplotlib.
-    A separate window is not required as the plot is to be embedded directly into the current tkinter window from main.py
-    '''
+    """
+    A monkey-patched version of the cerebro.plot() method that omits the `plotter.show()` call.
+    This prevents a new window being opened for each plot, and instead embeds plots directly into
+    a tkinter based window. 
+    """
     if self._exactbars > 0:
         return
 
@@ -28,12 +28,19 @@ def patched_plot(self, plotter=None, numfigs=1, iplot=True, start=None, end=None
     return figs
 
 class Transactions(observers.BuySell):
-    '''
-    Modifications to Backtrader's BuySell Observer:
-        - Renames 'buy' and 'sell' to 'Entry' and 'Exit' respectively.
-        - Colours: More muted, less bright and less intrusive.
-        - Barplot: Set to True, making markers appear above/below the high/low of candles.
-    '''
+    """
+    Customised version of Backtraders BuySell Observer.
+
+    Modifications:
+    - Renames 'buy' and 'sell' to 'Entry' and 'Exit' respectively.
+    - Adjusts colors to be more muted, making them less bright and less intrusive.
+    - Configures bar plot markers to appear above/below the high/low of candles.
+
+    Inherits from
+    -------------
+    observers.BuySell
+        The base observer class for BuySell transactions in Backtrader.
+    """
     
     plotlines: dict = dict(
         buy=dict(
@@ -66,10 +73,29 @@ class Transactions(observers.BuySell):
     )
 
 class AccountValue(Observer):
-    '''
-    Custom Observer to display account value over time.
-    '''
+    """
+    Custom Observer to display account value over time on a subplot.
 
+    Attributes
+    ----------
+    alias : tuple
+        A tuple containing the display name for the observer. Here it is set to 'Account Value'.
+    lines : tuple
+        A tuple defining the lines to be plotted. In this case, it includes a single line for account value.
+    plotinfo : dict
+        A dictionary specifying plot-related settings:
+        - 'plot': Whether to plot the observer (True).
+        - 'subplot': Whether the observer should be plotted in a subplot (True).
+        - 'plotlinelabels': Whether to display labels for the plot lines (True).
+    plotlines : dict
+        A dictionary defining the appearance of the plot lines:
+        - 'value': Specifies the color ('#607D8B') and label ('Account Value') for the account value line.
+
+    Methods
+    -------
+    next()
+        Updates the account value line with the current broker value.
+    """
     alias = ('Account Value',)
     lines = ('value',)
 

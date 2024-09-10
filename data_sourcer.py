@@ -5,6 +5,26 @@ from typing import Optional
 from ttkbootstrap.dialogs import Messagebox
 
 class DataSourcer:
+    """
+    Class that sources historical data for backtesting, through the Yahoo Finance API and returns it as a Pandas Dataframe.
+    Attributes
+    ----------
+    ticker : str
+        The stock ticker symbol (e.g., 'TSLA' for Tesla, 'AAPL' for Apple).
+    start : str
+        The start date for the historical data in 'YYYY-MM-DD' format.
+    end : str
+        The end date for the historical data in 'YYYY-MM-DD' format.
+    interval : str
+        The data interval (e.g., '1d' for daily, '1wk' for weekly, '1mo' for monthly).
+
+    Methods
+    -------
+    retrieve_data() -> Optional[bt.feeds.PandasData]
+        Retrieves historical stock data from Yahoo Finance, converts it into a Backtrader 
+        compatible format, and returns it. If data retrieval fails or the data is empty, 
+        returns None.
+    """
     def __init__(self, ticker: str, start_date: str, end_date: str, interval: str) -> None:
         """
         Initializes the DataSourcer with the ticker symbol, date range, and interval.

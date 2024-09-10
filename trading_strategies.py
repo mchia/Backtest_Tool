@@ -3,19 +3,67 @@ import pandas as pd
 from backtrader import Strategy, indicators
 
 class StrategyBase(Strategy):
+    """
+    Class provides a template for creating custom trading strategies by managing orders,
+    tracking trades, and calculating various performance metrics.
+
+    Attributes
+    ----------
+    ticker : str
+        The stock ticker symbol (e.g., 'TSLA' for Tesla, 'AAPL' for Apple).
+    interval : str
+        The data interval (e.g., '1d' for daily, '1wk' for weekly).
+    dataclose : float
+        Reference to the closing price data.
+    order : int or None
+        The current order being processed (if any).
+    buyprice : float or None
+        The price at which a buy order was executed.
+    buycomm : float or None
+        The commission paid for the buy order.
+    size_to_buy : float or None
+        The size of the buy order.
+    trades : int
+        Total number of trades executed.
+    wins : int
+        Number of winning trades.
+    losses : int
+        Number of losing trades.
+    total_gross_profit : float
+        Total gross profit from winning trades.
+    total_gross_losses : float
+        Total gross losses from losing trades.
+    total_net_profit : float
+        Total net profit after accounting for commissions.
+    total_net_losses : float
+        Total net losses after accounting for commissions.
+    total_fees : float
+        Total fees paid.
+    trade_id : int
+        Unique identifier for each trade.
+    """
+
     def __init__(self, ticker: str, interval: str) -> None:
+        """
+        Initializes the strategy with ticker symbol and data interval.
+
+        Parameters
+        ----------
+        ticker : str
+            The stock ticker symbol.
+        interval : str
+            The data interval.
+        """
         self.ticker: str = ticker
         self.interval: str = interval
         self.initialize_indicators()
 
-        # Strategy Parameters
         self.dataclose: float = self.datas[0].close
         self.order: int = None
         self.buyprice: float = None
         self.buycomm: float = None
         self.size_to_buy: float = None
 
-        # Trade Statistics
         self.trades: int = 0
         self.wins: int = 0
         self.losses: int = 0
@@ -27,17 +75,28 @@ class StrategyBase(Strategy):
         self.trade_id: int = 1
 
     def start(self) -> None:
-        # Initialize attributes here to ensure they're set before the strategy runs
-        self.capital = self.cerebro.broker.getvalue()
+        """
+        Initializes attributes and lists to hold trade data before the strategy starts running.
 
-        # Lists to hold data
+        Sets the initial capital and prepares lists for storing buy and sell transactions, as well as trade results.
+        """
+        self.capital = self.cerebro.broker.getvalue()
         self.buy_transactions: list = []
         self.sell_transactions: list = []
         self.trade_results: list = []
 
     def notify_order(self, order) -> None:
         """
-        Method is kept for testing purposes.
+        Handles order notifications and records transactions.
+
+        Parameters
+        ----------
+        order : backtrader.Order
+            The order object being notified.
+
+        Returns
+        -------
+        None
         """
         if order.status in [order.Submitted, order.Accepted]:
             return
@@ -67,6 +126,18 @@ class StrategyBase(Strategy):
         self.order = None
 
     def notify_trade(self, trade) -> None:
+        """
+        Handles trade notifications and updates trade statistics.
+
+        Parameters
+        ----------
+        trade : backtrader.Trade
+            The trade object being notified.
+
+        Returns
+        -------
+        None
+        """
         if not trade.isclosed:
             return
 
@@ -95,8 +166,15 @@ class StrategyBase(Strategy):
         )
 
         self.trade_id += 1
-    
-    def print_trade_stats(self):
+
+    def print_trade_stats(self) -> None:
+        """
+        Prints a summary of trade statistics, including account balance, profit, loss, and the number of trades.
+
+        Returns
+        -------
+        None
+        """
         ending_balance: float = round(self.cerebro.broker.getcash(), 2)
         account_growth: float = round(100 * ((ending_balance - 100000) / 100000), 2)
         tgp: float = round(self.total_gross_profit, 2)
@@ -115,10 +193,16 @@ class StrategyBase(Strategy):
             f'Total Gross Losses: ${tgl}, Total Net Losses: ${tnl}')
         print(f'Total Fees: ${total_fees}')
         print(f'Total Trades: {self.trades}, Wins: {self.wins}, Losses: {self.losses}')
-
         print(self.trade_results)
 
-    def trade_logs(self):
+    def trade_logs(self) -> None:
+        """
+        Creates and prints detailed trade logs, including entry and exit transactions, fees, and trade results.
+
+        Returns
+        -------
+        None
+        """
         buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares'])
         sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
@@ -154,30 +238,65 @@ class StrategyBase(Strategy):
         print(transaction_data)
 
     def initialize_indicators(self) -> None:
-        '''
-        Raise NotImplementedError if subclass does not intiate an indicator.
-        '''
+        """
+        Method to initialize strategy-specific indicators.
+
+        This method should be implemented by subclasses to set up any technical indicators required by the strategy.
+
+        Raises
+        ------
+        NotImplementedError
+            If not implemented by the subclass.
+        """
         raise NotImplementedError("Must be implemented by the subclass")
 
     def buy_signal(self) -> bool:
-        '''
-        Raise NotImplementedError if subclass does not define a buy signal.
-        '''
+        """
+        Method to define the buy signal condition.
+
+        This method should be implemented by subclasses to provide the logic for generating buy signals.
+
+        Returns
+        -------
+        bool
+            True if a buy signal is generated, otherwise False.
+
+        Raises
+        ------
+        NotImplementedError
+            If not implemented by the subclass.
+        """
         raise NotImplementedError("Must be implemented by the subclass")
 
     def sell_signal(self) -> bool:
-        '''
-        Raise NotImplementedError if subclass does not define a sell signal.
-        '''
+        """
+        Method to define the sell signal condition.
+
+        This method should be implemented by subclasses to provide the logic for generating sell signals.
+
+        Returns
+        -------
+        bool
+            True if a sell signal is generated, otherwise False.
+
+        Raises
+        ------
+        NotImplementedError
+            If not implemented by the subclass.
+        """
         raise NotImplementedError("Must be implemented by the subclass")
 
     def next(self) -> None:
-        '''
-        If NotImplementedErros are not raised and there is no active position in the market.
-        Then if a buy signal is recevied, execute a buy order.
+        """
+        Method called on each iteration of the strategy.
 
-        Otherwise, if a position is currently in the market and a sell signalk is received, close current position.
-        '''
+        Checks if there is an active position. If not, it evaluates the buy signal and places a buy order if the signal is true.
+        If there is an active position and the sell signal is true, it closes the position.
+
+        Returns
+        -------
+        None
+        """
         if not self.position:
             if self.buy_signal():
                 size_to_buy: int = math.floor(self.broker.getvalue() / self.data.close[0]) * 0.8
@@ -186,12 +305,31 @@ class StrategyBase(Strategy):
             self.sell(size=self.position.size)
 
 class RSI_Strategy(StrategyBase):
-    '''
-    Strategy: RSI
-    Indicators: Relative Strength Index (RSI)
-    Buy Signal: When the RSI is below the oversold threshold.
-    Sell Signal: When the RSI is above the overbought threshold.
-    '''
+    """
+    Strategy: RSI (Relative Strength Index)
+
+    Indicators
+    ----------
+    RSI : backtrader.indicators.RSI
+        Relative Strength Index calculated with a specified period.
+
+    Buy Signal
+    ----------
+    Generated when the RSI is below the oversold threshold.
+
+    Sell Signal
+    ----------
+    Generated when the RSI is above the overbought threshold.
+
+    Parameters
+    ----------
+    rsi_period : int
+        The period for calculating the RSI (default is 14).
+    oversold : int
+        The RSI value below which a buy signal is generated (default is 30).
+    overbought : int
+        The RSI value above which a sell signal is generated (default is 70).
+    """
 
     params: tuple[tuple[str, int]] = (
         ('rsi_period', 14),
@@ -200,29 +338,75 @@ class RSI_Strategy(StrategyBase):
     )
 
     def initialize_indicators(self) -> None:
+        """
+        Initializes the RSI indicator with the specified period.
+
+        Returns
+        -------
+        None
+        """
         self.rsi = indicators.RSI(period=self.params.rsi_period)
-        
+
     def buy_signal(self) -> bool:
+        """
+        Checks if a buy signal is generated.
+
+        A buy signal is generated when the RSI is below the oversold threshold and there is no existing position.
+
+        Returns
+        -------
+        bool
+            True if the RSI is below the oversold threshold and there is no existing position, otherwise False.
+        """
         return (
             self.position.size == 0
             and self.rsi < self.params.oversold
         )
 
     def sell_signal(self) -> bool:
+        """
+        Checks if a sell signal is generated.
+
+        A sell signal is generated when the RSI is above the overbought threshold and there is an existing position.
+
+        Returns
+        -------
+        bool
+            True if the RSI is above the overbought threshold and there is an existing position, otherwise False.
+        """
         return (
             self.position.size > 0
             and self.rsi > self.params.overbought
         )
 
 class GoldenCross(StrategyBase):
-    '''
-    Stategy: Golden Crossover
-    Indicators: 
-        - x1 Fast Moving Average (50 Days)
-        - x1 Slow Moving Average (200 Days)
-    Buy Signal: When the fast moving average crosses the slow moving average to the upside.
-    Sell Signal: When the slow moving average crosses the fast moving average to the downside.
-    '''
+    """
+    Strategy: Golden Crossover
+
+    Indicators
+    ----------
+    Fast MA : backtrader.indicators.EMA
+        Exponential Moving Average with a short period (50 days).
+    Slow MA : backtrader.indicators.EMA
+        Exponential Moving Average with a long period (200 days).
+    Golden Cross : backtrader.indicators.CrossOver
+        Indicator to detect crossovers between the fast and slow EMAs.
+
+    Buy Signal
+    ----------
+    Generated when the fast moving average crosses the slow moving average to the upside and the closing price is above the slow MA.
+
+    Sell Signal
+    ----------
+    Generated when the slow moving average crosses the fast moving average to the downside.
+    
+    Parameters
+    ----------
+    fast : int
+        The period for the fast EMA (default is 50).
+    slow : int
+        The period for the slow EMA (default is 200).
+    """
 
     params: tuple[tuple[str, int]] = (
         ('fast', 50),
@@ -230,11 +414,28 @@ class GoldenCross(StrategyBase):
     )
 
     def initialize_indicators(self) -> None:
+        """
+        Initializes the EMA indicators and the crossover detector.
+
+        Returns
+        -------
+        None
+        """
         self.slow_ma = indicators.EMA(self.datas[0].close, period=self.params.fast, plotname='50d MA')
         self.fast_ma = indicators.EMA(self.datas[0].close, period=self.params.slow, plotname='200d MA')
         self.goldencross = indicators.CrossOver(self.slow_ma, self.fast_ma)
 
     def buy_signal(self) -> bool:
+        """
+        Checks if a buy signal is generated.
+
+        A buy signal is generated when the fast moving average crosses the slow moving average to the upside, and the current price is above the slow MA.
+
+        Returns
+        -------
+        bool
+            True if the crossover is bullish and the price is above the slow MA, otherwise False.
+        """
         return (
             self.position.size == 0
             and self.goldencross == 1
@@ -242,18 +443,45 @@ class GoldenCross(StrategyBase):
             )
 
     def sell_signal(self) -> bool:
+        """
+        Checks if a sell signal is generated.
+
+        A sell signal is generated when the slow moving average crosses the fast moving average to the downside and there is an existing position.
+
+        Returns
+        -------
+        bool
+            True if the crossover is bearish, otherwise False.
+        """
         return (
             self.position.size > 0
             and self.goldencross == -1
             )
 
 class Bollinger_Bands(StrategyBase):
-    '''
+    """
     Strategy: Bollinger Bands
-    Indicators: Bollinger Bands
-    Buy Signal: When price closes below the bottom of the Bollinger Bands.
-    Sell Signal: When price closes above the top of the Bollinger Bands.
-    '''
+
+    Indicators
+    ----------
+    Bollinger Bands : backtrader.indicators.BollingerBands
+        Bollinger Bands calculated with a specified period and standard deviation factor.
+
+    Buy Signal
+    ----------
+    Generated when the price closes below the bottom of the Bollinger Bands.
+
+    Sell Signal
+    ----------
+    Generated when the price closes above the top of the Bollinger Bands.
+
+    Parameters
+    ----------
+    period : int
+        The period for calculating the Bollinger Bands (default is 20).
+    stddev : int
+        The number of standard deviations for the Bollinger Bands (default is 2).
+    """
     
     params: tuple[tuple[str, int]] = (
         ('period', 20),
@@ -261,21 +489,88 @@ class Bollinger_Bands(StrategyBase):
     )
 
     def initialize_indicators(self):
+        """
+        Initializes the Bollinger Bands indicator.
+
+        Returns
+        -------
+        None
+        """
         self.bbands = indicators.BollingerBands(self.data, period=self.params.period, devfactor=self.params.stddev)
 
     def buy_signal(self) -> bool:
+        """
+        Checks if a buy signal is generated.
+
+        A buy signal is generated when the price closes below the bottom of the Bollinger Bands and there is no existing position.
+
+        Returns
+        -------
+        bool
+            True if the price is below the bottom band and there is no existing position, otherwise False.
+        """
         return (
             self.position.size == 0
             and self.data.close[0] <= self.bbands.lines.bot[0]
             )
 
     def sell_signal(self) -> bool:
+        """
+        Checks if a sell signal is generated.
+
+        A sell signal is generated when the price closes above the top of the Bollinger Bands and there is an existing position.
+
+        Returns
+        -------
+        bool
+            True if the price is above the top band and there is an existing position, otherwise False.
+        """
         return (
             self.position.size > 0
             and self.data.close[0] >= self.bbands.lines.top[0]
             )
-
+    
 class IchimokuCloud(StrategyBase):
+    """
+    Strategy: Ichimoku Cloud
+
+    Indicators
+    ----------
+    Tenkan-sen : backtrader.indicators.Ichimoku
+        The conversion line of the Ichimoku Cloud, calculated with a specified period.
+    Kijun-sen : backtrader.indicators.Ichimoku
+        The base line of the Ichimoku Cloud, calculated with a specified period.
+    Senkou Span A : backtrader.indicators.Ichimoku
+        The first leading span of the Ichimoku Cloud, calculated with a specified period.
+    Senkou Span B : backtrader.indicators.Ichimoku
+        The second leading span of the Ichimoku Cloud, calculated with a specified period.
+    Chikou Span : backtrader.indicators.Ichimoku
+        The lagging span of the Ichimoku Cloud, calculated with a specified shift.
+
+    Buy Signal
+    ----------
+    Generated when:
+    - The Tenkan-sen is above the Kijun-sen.
+    - The current closing price is above both the Senkou Span A and Senkou Span B.
+
+    Sell Signal
+    ----------
+    Generated when:
+    - The Tenkan-sen is below the Kijun-sen.
+    - The current closing price is below both the Senkou Span A and Senkou Span B.
+
+    Parameters
+    ----------
+    tenkan : int
+        The period for the Tenkan-sen calculation (default is 9).
+    kijun : int
+        The period for the Kijun-sen calculation (default is 26).
+    senkou : int
+        The period for the Senkou Span A and B calculations (default is 52).
+    shift : int
+        The shift for the Chikou Span calculation (default is 26).
+    """
+
     params: tuple[tuple[str, int]] = (
         ('tenkan', 9),
         ('kijun', 26),
@@ -284,6 +579,13 @@ class IchimokuCloud(StrategyBase):
     )
 
     def initialize_indicators(self) -> None:
+        """
+        Initializes the Ichimoku Cloud indicator components with the specified parameters.
+
+        Returns
+        -------
+        None
+        """
         self.ichi = indicators.Ichimoku(
             tenkan=self.params.tenkan,
             kijun=self.params.kijun,
@@ -298,6 +600,19 @@ class IchimokuCloud(StrategyBase):
         self.chikou_span = self.ichi.chikou_span(-self.params.shift)
 
     def buy_signal(self) -> bool:
+        """
+        Checks if a buy signal is generated.
+
+        A buy signal is generated when:
+        - The Tenkan-sen is above the Kijun-sen.
+        - The closing price is above both the Senkou Span A and Senkou Span B.
+        - There is no existing position.
+
+        Returns
+        -------
+        bool
+            True if the conditions for a buy signal are met, otherwise False.
+        """
         return (
             self.position.size == 0
             and (self.tenkan_sen[0] > self.kijun_sen[0])
@@ -306,6 +621,19 @@ class IchimokuCloud(StrategyBase):
             )
 
     def sell_signal(self) -> bool:
+        """
+        Checks if a sell signal is generated.
+
+        A sell signal is generated when:
+        - The Tenkan-sen is below the Kijun-sen.
+        - The closing price is below both the Senkou Span A and Senkou Span B.
+        - There is an existing position.
+
+        Returns
+        -------
+        bool
+            True if the conditions for a sell signal are met, otherwise False.
+        """
         return (
             self.position.size > 0
             and (self.tenkan_sen[0] < self.kijun_sen[0])

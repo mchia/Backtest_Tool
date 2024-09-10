@@ -22,6 +22,29 @@ intervals: dict = {
 
 class MainWindow:
     def __init__(self) -> None:
+        """
+        Initializes the GUI for the Backtesting Tool.
+
+        This method sets up the main components of the GUI, including:
+            - The main window and layout with ttkbootstrap's `Window` and `PanedWindow`.
+            - Selection pane to allow the user to input a stock ticker, interval, balance, 
+            date range, and strategy.
+            - A graph pane that will later display the backtest results as a plot.
+            - A details pane to show information about the ticker and provide options to 
+            export trade logs.
+
+        The following elements are initialized:
+            - Root window with screen size and title.
+            - A paned window layout to organize the different sections.
+            - Various widgets for user input such as entry fields, comboboxes, and buttons.
+            - A canvas to display the plot generated from the backtest.
+            - A details pane to show additional information about the trades.
+
+        Returns
+        -------
+        None
+            This method does not return any values.
+        """
         self.root: tb.Window = tb.Window(themename='flatly')
         self.screen_width: int = self.root.winfo_screenwidth()
         self.screen_height: int = self.root.winfo_screenheight()
@@ -118,6 +141,26 @@ class MainWindow:
         self.export_csv.pack(anchor='w', padx=10, pady=10)
 
     def change_theme(self, event) -> None:
+        """
+        Updates the theme of the GUI whenever a new theme is selected from the dropdown 
+        in a ttkbootstrap-based application.
+
+        This method retrieves the selected theme using ttkbootstrap, applies it to the 
+        entire GUI, and updates the background colors of specific widgets (e.g., canvas 
+        and root window) to match the new theme's style.
+
+    Parameters
+    ----------
+    event : ttkbootstrap.Event
+        The event that triggers this method, typically when a new theme is selected 
+        from a dropdown box. The event is passed automatically when binding theme changes.
+
+    Returns
+    -------
+    None
+        This method does not return any values but updates the theme and the background 
+        colors of the widgets in the ttkbootstrap-based application.
+    """
         selected_theme: str = self.themer.get()
         style: tb.Style = tb.Style(theme=selected_theme)
 
@@ -130,6 +173,37 @@ class MainWindow:
         style.theme_use(selected_theme)
     
     def execute_backtest(self) -> None:
+        """
+        Executes a backtest based on user-provided inputs from the GUI fields. 
+
+        The process involves:
+            a) Retrieving the necessary values from the user entry fields (with dictionary lookups where applicable).
+            b) Initializing the `DataSourcer` with retrieved values and calling the `retrieve_data()` method to get historical stock data as a pandas DataFrame.
+            c) Initializing an instance of the `BacktraderEngine`, passing in the balance, stock data, strategy, and other parameters. This returns an instance of the Cerebro engine.
+            d) Passing the Cerebro instance to `BackPlotter` for plotting the results and displaying the graph in the GUI.
+
+        If any required fields are missing or invalid, an error message will be shown to the user. The method also handles potential exceptions during input retrieval and processing.
+
+        Parameters
+        ----------
+        None
+            This method does not accept any parameters, but it retrieves values from the Tkinter widgets (entry boxes, comboboxes, etc.) tied to the form fields.
+
+        Raises
+        ------
+        ValueError
+            Raised if the starting balance cannot be converted to an integer.
+            In such cases, the method will log the error message and prevent the backtest from proceeding.
+
+        Returns
+        -------
+        None
+            This method does not return a value. However, it updates the following:
+            - A plot is generated and displayed within the GUI via `self.display_plot()`.
+            - The `self.info_text` attribute is updated with information about the selected ticker.
+            - The `self.information` label is updated with the ticker information.
+            - If there are missing fields, an error message will be shown to the user.
+        """
         try:
             fields: dict = {
                 'Ticker': self.ticker_entry.get().upper(),
@@ -185,6 +259,29 @@ class MainWindow:
             self.information.config(text=self.info_text)
 
     def display_plot(self, fig) -> None:
+        """
+        Displays the given matplotlib figure in the GUI's canvas widget, replacing any 
+        previous content, and embeds the associated navigation toolbar for interactive 
+        control.
+
+        The method does the following:
+            1. Clears any previous widgets inside the canvas.
+            2. Embeds the new matplotlib figure into the canvas.
+            3. Adds a navigation toolbar to allow for zooming, panning, and saving the plot.
+            4. Adjusts the layout to ensure proper sizing and placement.
+
+        Parameters
+        ----------
+        fig : matplotlib.figure.Figure
+            The matplotlib figure object that contains the plot to be displayed 
+            in the GUI's canvas widget.
+
+        Returns
+        -------
+        None
+            This method does not return any values. It updates the canvas widget with the new 
+            plot and configures the associated toolbar for interaction.
+        """
         for widget in self.canvas.winfo_children():
             widget.destroy()
 
