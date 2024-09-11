@@ -27,6 +27,39 @@ def patched_plot(self, plotter=None, numfigs=1, iplot=True, start=None, end=None
 
     return figs
 
+def convert_number(value: float) -> str:
+    """
+    Converts a large numerical value into a human-readable string format using common 
+    abbreviations for large numbers (K for thousand, M for million, B for billion, 
+    and T for trillion).
+
+    Parameters
+    ----------
+    value : float
+        The numerical value to be converted into a string.
+
+    Returns
+    -------
+    str
+        A formatted string representing the value in human-readable form:
+        - Values >= 1 trillion are abbreviated with 'T'
+        - Values >= 1 billion are abbreviated with 'B'
+        - Values >= 1 million are abbreviated with 'M'
+        - Values >= 1 thousand are abbreviated with 'K'
+        - Smaller values are returned with two decimal places
+    """
+    match value:
+        case value if value >= 1_000_000_000_000:
+            return f"${value / 1_000_000_000_000:.2f}T"
+        case value if value >= 1_000_000_000:
+            return f"${value / 1_000_000_000:.2f}B"
+        case value if value >= 1_000_000:
+            return f"${value / 1_000_000:.2f}M"
+        case value if value >= 1_000:
+            return f"${value / 1_000:.2f}K"
+        case _:
+            return f"${value:.2f}"
+
 class Transactions(observers.BuySell):
     """
     Customised version of Backtraders BuySell Observer.
@@ -71,33 +104,23 @@ class Transactions(observers.BuySell):
         subplot=False,
         plotlinelabels=True,
     )
-
-class AccountValue(Observer):
+    
+class Portfolio(Observer):
     """
-    Custom Observer to display account value over time on a subplot.
+    This observer keeps track of the current cash amount and portfolio value in
+    the broker (including the cash)
 
-    Attributes
-    ----------
-    alias : tuple
-        A tuple containing the display name for the observer. Here it is set to 'Account Value'.
-    lines : tuple
-        A tuple defining the lines to be plotted. In this case, it includes a single line for account value.
-    plotinfo : dict
-        A dictionary specifying plot-related settings:
-        - 'plot': Whether to plot the observer (True).
-        - 'subplot': Whether the observer should be plotted in a subplot (True).
-        - 'plotlinelabels': Whether to display labels for the plot lines (True).
-    plotlines : dict
-        A dictionary defining the appearance of the plot lines:
-        - 'value': Specifies the color ('#607D8B') and label ('Account Value') for the account value line.
-
-    Methods
-    -------
-    next()
-        Updates the account value line with the current broker value.
+    Params: None
     """
-    alias = ('Account Value',)
-    lines = ('value',)
+
+    _stclock = True
+
+    params = (
+        ('fund', None),
+    )
+
+    alias: tuple[str] = ('Account Value')
+    lines: tuple[str, str] = ('cash', 'value')
 
     plotinfo: dict = dict(
         plot=True,
@@ -109,8 +132,26 @@ class AccountValue(Observer):
         value=dict(
             color='#607D8B',
             label='Account Value'
-            )
+            ),
+        cash=dict(
+            color='red',
+            label='Cash'
+            ),
         )
+    
+    def start(self):
+        if self.p.fund is None:
+            self._fundmode = self._owner.broker.fundmode
+        else:
+            self._fundmode = self.p.fund
+
+        if self._fundmode:
+            self.plotlines.cash._plotskip = True
+            self.plotlines.value._name = 'FundValue'
 
     def next(self):
-        self.lines.value[0] = self._owner.broker.getvalue()
+        if not self._fundmode:
+            self.lines.value[0] = value = self._owner.broker.getvalue()
+            self.lines.cash[0] = self._owner.broker.getcash()
+        else:
+            self.lines.value[0] = self._owner.broker.fundvalue

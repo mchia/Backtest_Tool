@@ -1,7 +1,8 @@
 import pandas as pd
 import yfinance as yf
 import backtrader as bt
-from typing import Optional
+from typing import Optional, Tuple
+from custom_methods import convert_number
 from ttkbootstrap.dialogs import Messagebox
 
 class DataSourcer:
@@ -49,7 +50,7 @@ class DataSourcer:
         self.end: str = end_date
         self.interval: str = interval
 
-    def retrieve_data(self) -> Optional[bt.feeds.PandasData]:
+    def retrieve_data(self) -> Optional[Tuple[bt.feeds.PandasData, pd.DataFrame]]:
         """
         Method that uses the Yahoo Finance API to retrieve historical stock data.
 
@@ -78,4 +79,34 @@ class DataSourcer:
         data.index = pd.to_datetime(data.index)
         data_feed: bt.feeds.PandasData = bt.feeds.PandasData(dataname=data)
         
-        return data_feed
+        return (data_feed, data)
+    
+    def ticker_profile(self) -> str:
+        """
+        Retrieves and formats information about a specific stock ticker using the Yahoo Finance API.
+
+        This method queries the Yahoo Finance API to gather and display key details about the 
+        stock ticker, including company name, ticker symbol, industry, sector, market cap, 
+        and trading volume.
+
+        Returns
+        -------
+        info_text : str
+            A string containing the company's information, with each detail on a new line.
+        """
+        stock: yf.Ticker = yf.Ticker(self.ticker)
+        stock_info: dict = stock.info
+
+        company_info: dict = {
+            "Company Name": stock_info.get("longName"),
+            "Ticker": stock_info.get("symbol"),
+            "Industry": stock_info.get("industry"),
+            "Sector": stock_info.get("sector"),
+            "Market Cap": convert_number(value=stock_info.get("marketCap")),
+            "Volume": convert_number(value=stock_info.get("volume")),
+            # "Financials": stock_info.financials if stock_info.financials is not None else "No financials available"
+        }
+
+        info_text: str = "\n".join(f"{key}: {value}" for key, value in company_info.items())
+        
+        return info_text

@@ -1,8 +1,13 @@
+import matplotlib
 import pandas as pd
 import backtrader as bt
-import custom_visuals as cv
+import ttkbootstrap as tb
+import custom_methods as cv
 import matplotlib.pyplot as plt
 from unittest.mock import patch
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+
+matplotlib.use("TkAgg")
 
 # Apply patch to bt.Cerebro.plot and overwrite it with cv.patched_plot to prevent show() from being called.
 patch.object(target=bt.Cerebro, attribute='plot', new=cv.patched_plot).start()
@@ -30,7 +35,7 @@ class BacktraderEngine:
         Configures the cerebro engine with the provided datafeed and strategy, runs the backtest,
         and returns the cerebro instance.
     """
-    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str) -> None:
+    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str, commission: float) -> None:
         """
         Initializes the cerebro engine with a capital, datafeed, ticker, and strategy.
 
@@ -56,10 +61,11 @@ class BacktraderEngine:
 
         self.cerebro: bt.Cerebro = bt.Cerebro(stdstats=False)
         self.cerebro.broker.set_cash(capital)
-        self.cerebro.broker.setcommission(commission=0.001)
+        self.cerebro.broker.setcommission(commission)
         
         # Add default observers manually
-        self.cerebro.addobserver(cv.AccountValue)
+        # self.cerebro.addobserver(cv.AccountValue)
+        self.cerebro.addobserver(cv.Portfolio)
         self.cerebro.addobserver(cv.Transactions)
 
     def execute(self) -> bt.Cerebro:
@@ -92,6 +98,9 @@ class BackPlotter:
     
     bt_plot() -> plt.Figure
         Generates and returns a matplotlib figure object that visualizes the backtest results.
+
+    display_plot() -> None
+        Controls how the plot is embeded into a tkinter based canvas.
     """
     def __init__(self, bt_instance: bt.Cerebro) -> None:
         """
@@ -147,3 +156,44 @@ class BackPlotter:
         )
 
         return fig[0][0]
+    
+    def display_plot(self, fig: plt.Figure, canvas: tb.Canvas) -> None:
+        """
+        Displays the given matplotlib figure in the GUI's canvas widget, replacing any 
+        previous content, and embeds the associated navigation toolbar for interactive 
+        control.
+
+        The method does the following:
+            1. Clears any previous widgets inside the canvas.
+            2. Embeds the new matplotlib figure into the canvas.
+            3. Adds a navigation toolbar to allow for zooming, panning, and saving the plot.
+            4. Adjusts the layout to ensure proper sizing and placement.
+
+        Parameters
+        ----------
+        fig : matplotlib.figure.Figure
+            The matplotlib figure object that contains the plot to be displayed in the GUI's canvas widget.
+        
+        canvas : tb.Canvas
+            An instance of ttkbootstraps canvas, to embed the plot in.
+
+        Returns
+        -------
+        None
+            This method does not return any values. It updates the canvas widget with the new 
+            plot and configures the associated toolbar for interaction.
+        """
+        for widget in canvas.winfo_children():
+            widget.destroy()
+
+        plt.close('all')
+        fig.subplots_adjust(right=0.93, left=0.01)
+        plot_canvas = FigureCanvasTkAgg(figure=fig, master=canvas)
+        plot_canvas.draw()
+        plot_canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        toolbar = NavigationToolbar2Tk(canvas=plot_canvas, window=canvas, pack_toolbar=False)
+        toolbar.update()
+        toolbar.pack(anchor='w', padx=10)
+
+        canvas.update_idletasks()

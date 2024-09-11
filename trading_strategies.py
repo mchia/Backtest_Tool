@@ -1,5 +1,6 @@
 import math
 import pandas as pd
+from custom_methods import convert_number
 from backtrader import Strategy, indicators
 
 class StrategyBase(Strategy):
@@ -167,7 +168,7 @@ class StrategyBase(Strategy):
 
         self.trade_id += 1
 
-    def print_trade_stats(self) -> None:
+    def print_trade_stats(self) -> str:
         """
         Prints a summary of trade statistics, including account balance, profit, loss, and the number of trades.
 
@@ -178,24 +179,32 @@ class StrategyBase(Strategy):
         ending_balance: float = round(self.cerebro.broker.getcash(), 2)
         account_growth: float = round(100 * ((ending_balance - 100000) / 100000), 2)
         tgp: float = round(self.total_gross_profit, 2)
-        tgl: float = round(self.total_net_losses, 2)
+        tgl: float = round(self.total_gross_losses, 2)
 
         tnp: float = round(self.total_net_profit, 2)
         tnl: float = round(self.total_net_losses, 2)
 
         total_fees: float = round(self.total_fees, 2)
 
-        print(
-            f'Starting Balance: ${self.capital}, Ending Balance: ${ending_balance}, Account Growth: {account_growth}%')
-        print(
-            f'Total Gross Profit: ${tgp}, Total Net Profit: ${tnp}')
-        print(
-            f'Total Gross Losses: ${tgl}, Total Net Losses: ${tnl}')
-        print(f'Total Fees: ${total_fees}')
-        print(f'Total Trades: {self.trades}, Wins: {self.wins}, Losses: {self.losses}')
-        print(self.trade_results)
+        result_summary: dict = {
+            "Starting Balance": convert_number(value=self.capital),
+            "Ending Balance": convert_number(value=ending_balance),
+            "Account Growth": f"({account_growth}%",
+            "Gross Profit": convert_number(value=tgp),
+            "Gross Losses": convert_number(value=tgl),
+            "Net Profit": convert_number(value=tnp),
+            "Net Losses": convert_number(value=tnl),
+            "Fees": convert_number(value=total_fees),
+            "Trade Count" : self.trades,
+            "Wins" : self.wins,
+            "Losses": self.losses
+        }
 
-    def trade_logs(self) -> None:
+        results_text: str = "\n".join(f"{key}: {value}" for key, value in result_summary.items())
+
+        return results_text
+
+    def trade_logs(self) -> pd.DataFrame:
         """
         Creates and prints detailed trade logs, including entry and exit transactions, fees, and trade results.
 
@@ -215,7 +224,7 @@ class StrategyBase(Strategy):
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
-        transaction_data = transaction_data[
+        transaction_data: pd.DataFrame = transaction_data[
             ['id',
             'ticker',
             'interval',
@@ -235,7 +244,7 @@ class StrategyBase(Strategy):
             'acc_bal']
         ]
 
-        print(transaction_data)
+        return transaction_data
 
     def initialize_indicators(self) -> None:
         """
