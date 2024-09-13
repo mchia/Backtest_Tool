@@ -29,7 +29,3 @@ strategy_params: dict = {
         'Stop-Loss %': 0.1
     }
 }
-
-Refactored code for GUI into methods for each panel.
-Moved all strategy parameters into a separate py file.
-Added a for loop to generate labels and entries for all parameters -> Dictionary updating to be
