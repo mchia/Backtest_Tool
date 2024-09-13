@@ -6,6 +6,7 @@ import trading_strategies as sb
 from tkinter import filedialog
 from data_sourcer import DataSourcer
 from ttkbootstrap.dialogs import Messagebox
+from strategy_params import strategy_params as strat
 from backtrade_engine import BacktraderEngine, BackPlotter
 
 intervals: dict = {
@@ -15,41 +16,60 @@ intervals: dict = {
     }
 
 class MainWindow:
+    """
+    MainWindow class for the Stock Backtesting Tool.
+
+    This class sets up the main graphical user interface (GUI) for the backtesting tool,
+    which includes three main panels:
+        1. Selection Panel - For user inputs such as stock ticker, interval, balance, date range, and strategy selection.
+        2. Plot Panel - For displaying the backtest results as a plot.
+        3. Results Panel - For showing information about the ticker, performance metrics, and options to export trade and stock data.
+    """
     def __init__(self) -> None:
         """
-        Initializes the GUI for the Backtesting Tool.
+        Initializes the GUI for the Stock Backtesting Tool.
 
-        This method sets up the main components of the GUI, including:
-            - The main window and layout with ttkbootstrap's `Window` and `PanedWindow`.
-            - Selection pane to allow the user to input a stock ticker, interval, balance, 
-            date range, and strategy.
-            - A graph pane that will later display the backtest results as a plot.
-            - A details pane to show information about the ticker and provide options to 
-            export trade logs.
-
-        The following elements are initialized:
-            - Root window with screen size and title.
-            - A paned window layout to organize the different sections.
-            - Various widgets for user input such as entry fields, comboboxes, and buttons.
-            - A canvas to display the plot generated from the backtest.
-            - A details pane to show additional information about the trades.
+        This method sets up the main window, layout, and the three primary panels:
+            - The Selection Panel for user inputs.
+            - The Plot Panel for displaying backtest results.
+            - The Results Panel for showing performance metrics and providing export options.
 
         Returns
         -------
         None
             This method does not return any values.
         """
-        self.root: tb.Window = tb.Window(themename='flatly')
+        self.root: tb.Window = tb.Window(themename='superhero')
         self.screen_width: int = self.root.winfo_screenwidth()
         self.screen_height: int = self.root.winfo_screenheight()
         self.root.geometry("%dx%d" % (self.screen_width, self.screen_height))
-        self.root.title("Backtesting Tool")
-        
-        # Base Pane
+        self.root.title("Stock Backtesting Tool")
         self.panedwindow: tb.PanedWindow = tb.PanedWindow(self.root, orient='horizontal')
         self.panedwindow.pack(fill='both', expand=True)
+        self.param_widgets: list = []
 
-        # Pane 1: Selection Pane
+        self.selection_panel()
+        self.display_params()
+        self.plot_panel()
+        self.results_panel()
+
+    def selection_panel(self) -> None:
+        """
+        Sets up the Selection Panel of the GUI.
+
+        This panel includes widgets for user inputs such as:
+            - Ticker entry
+            - Interval selection
+            - Initial balance input
+            - Commission input
+            - Date range selection
+            - Strategy selection
+            - Execute Backtest button
+
+        Returns
+        -------
+        None
+        """
         self.selection_pane = tb.Frame(self.panedwindow, padding=10)
         self.panedwindow.add(child=self.selection_pane)
 
@@ -63,7 +83,7 @@ class MainWindow:
 
         self.themer: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(tb.Style().theme_names()), width=19)
         self.themer.pack(anchor='w', pady=5)
-        self.themer.set('flatly')
+        self.themer.set('superhero')
         self.themer.bind("<<ComboboxSelected>>", self.change_theme)
 
         # Ticker
@@ -116,11 +136,22 @@ class MainWindow:
         self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=19)
         self.base_strategies.pack(anchor='w', pady=5)
         self.base_strategies.insert(0, 'RSI Strategy')
+        self.base_strategies.bind("<<ComboboxSelected>>", self.display_params)
 
         self.data_sourcing: tb.Button = tb.Button(master=self.selection_pane, text='Execute Backtest', command=self.execute_backtest)
         self.data_sourcing.pack(anchor='w', pady=20)
 
-        # Frame 2: Graph Pane
+    def plot_panel(self) -> None:
+        """
+        Sets up the Plot Panel of the GUI.
+
+        This panel includes:
+            - A canvas widget for displaying the backtest results plot.
+
+        Returns
+        -------
+        None
+        """
         self.graph_pane = tb.Frame(self.panedwindow)
         self.panedwindow.add(self.graph_pane, weight=4)
 
@@ -128,7 +159,19 @@ class MainWindow:
         self.canvas: tb.Canvas = tb.Canvas(master=self.graph_pane)
         self.canvas.pack(fill='both', expand=True)
 
-        # Frame 3: Details Pane
+    def results_panel(self) -> None:
+        """
+        Sets up the Results Panel of the GUI.
+
+        This panel includes widgets for displaying results and exporting data:
+            - Information label for ticker-related details.
+            - Performance label for backtest results.
+            - Buttons for exporting historical stock data and trade data.
+
+        Returns
+        -------
+        None
+        """
         self.details_pane: tb.Frame = tb.Frame(self.panedwindow, padding=10)
         self.panedwindow.add(self.details_pane, weight=1)
 
@@ -156,6 +199,48 @@ class MainWindow:
             command=lambda: self.export_csv(data=self.trade_logs)
         )
         self.export_trades.pack(anchor='w', padx=10, pady=10)
+
+    def display_params(self, event=None) -> None:
+        """
+        Creates labels and entry boxes based on the selected trading strategy,
+        allowing users to customize the parameters of a strategy.
+
+        Parameters
+        ----------
+        event : None
+            The event that triggers this method, typically when a new strategy is selected 
+            from a dropdown box. The event is passed automatically when binding strategy changes.
+
+        Returns
+        -------
+        None
+        """
+        for widget in self.param_widgets:
+            widget.destroy()
+        self.param_widgets.clear()
+
+        # Get selected strategy and parameters
+        selected_strategy: str = self.base_strategies.get()
+        strategy_class: bt.Strategy = sb.strategies_dict.get(selected_strategy)
+        strategy_class_name: str = strategy_class.__name__
+        params = strat.get(strategy_class_name, {})
+
+        for key, value in params.items():
+            frame = tb.Frame(master=self.selection_pane)
+            frame.pack(anchor='w', pady=(5, 0))
+
+            # Create and pack the label
+            param_key = tb.Label(master=frame, text=key, font=('Segoe UI', 12), width=15, anchor='w')
+            param_key.pack(side='left')
+
+            # Create and pack the entry box
+            param_entry = tb.Entry(master=frame, width=4)
+            param_entry.pack(side='left')
+            param_entry.insert(0, value)
+            param_entry.configure(justify='center')
+
+            # Store references to widgets for future use
+            self.param_widgets.append(frame)
 
     def change_theme(self, event) -> None:
         """
@@ -188,7 +273,7 @@ class MainWindow:
         self.root.config(bg=theme_bg)
 
         style.theme_use(selected_theme)
-    
+
     def execute_backtest(self) -> None:
         """
         Executes a backtest based on user-provided inputs from the GUI fields. 
@@ -298,6 +383,6 @@ class MainWindow:
         else:
             Messagebox.show_error("No data available to export.")
 
-if __name__ == "__main__":
-    window = MainWindow()
-    window.root.mainloop()
+
+window = MainWindow()
+window.root.mainloop()

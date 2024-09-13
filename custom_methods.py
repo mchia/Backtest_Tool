@@ -27,6 +27,27 @@ def patched_plot(self, plotter=None, numfigs=1, iplot=True, start=None, end=None
 
     return figs
 
+def thousand_separator(value: int|float, decimals=2) -> str:
+    """
+    Adds thousands separators to numerical values, making them more readable. 
+
+    Parameters
+    ----------
+    value : float or int
+        The numerical value to which thousands separators should be applied.
+    decimals : int, optional
+        The number of decimal places to display in the result (default is 2).
+
+    Returns
+    -------
+    str
+        A string representation of the number with commas as thousand separators and 
+        the specified number of decimal places.
+    """
+    num_formatted: str = '${:,.{}f}'.format(value, decimals)
+
+    return num_formatted 
+
 def convert_number(value: float) -> str:
     """
     Converts a large numerical value into a human-readable string format using common 

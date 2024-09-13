@@ -1,7 +1,8 @@
 import math
 import pandas as pd
-from custom_methods import convert_number
 from backtrader import Strategy, indicators
+from custom_methods import thousand_separator
+from strategy_params import strategy_params as strat
 
 class StrategyBase(Strategy):
     """
@@ -81,7 +82,7 @@ class StrategyBase(Strategy):
 
         Sets the initial capital and prepares lists for storing buy and sell transactions, as well as trade results.
         """
-        self.capital = self.cerebro.broker.getvalue()
+        self.capital: float = self.cerebro.broker.getvalue()
         self.buy_transactions: list = []
         self.sell_transactions: list = []
         self.trade_results: list = []
@@ -122,9 +123,9 @@ class StrategyBase(Strategy):
                         order.executed.comm
                     ]
                 )
-            self.bar_executed = len(self)
+            self.bar_executed: int = len(self)
 
-        self.order = None
+        self.order: int|None = None
 
     def notify_trade(self, trade) -> None:
         """
@@ -176,25 +177,27 @@ class StrategyBase(Strategy):
         -------
         None
         """
-        ending_balance: float = round(self.cerebro.broker.getcash(), 2)
-        account_growth: float = round(100 * ((ending_balance - 100000) / 100000), 2)
+        portfolio_value: float = self.cerebro.broker.getvalue()
+        ending_balance: float = self.cerebro.broker.getcash()
+        account_growth: float = round(100 * ((ending_balance - 100000) / 100000), 0)
         tgp: float = round(self.total_gross_profit, 2)
         tgl: float = round(self.total_gross_losses, 2)
 
         tnp: float = round(self.total_net_profit, 2)
         tnl: float = round(self.total_net_losses, 2)
 
-        total_fees: float = round(self.total_fees, 2)
+        total_fees: float = round(self.total_fees, 2) * -1
 
         result_summary: dict = {
-            "Starting Balance": convert_number(value=self.capital),
-            "Ending Balance": convert_number(value=ending_balance),
-            "Account Growth": f"({account_growth}%",
-            "Gross Profit": convert_number(value=tgp),
-            "Gross Losses": convert_number(value=tgl),
-            "Net Profit": convert_number(value=tnp),
-            "Net Losses": convert_number(value=tnl),
-            "Fees": convert_number(value=total_fees),
+            "Starting Balance": thousand_separator(value=self.capital),
+            "Portfolio Value": thousand_separator(value=portfolio_value),
+            "Ending Balance": thousand_separator(value=ending_balance),
+            "Account Growth": f"▲ {account_growth}%" if account_growth > 0 else f"▼ {account_growth}%",
+            "Gross Profit": thousand_separator(value=tgp),
+            "Gross Losses": thousand_separator(value=tgl),
+            "Net Profit": thousand_separator(value=tnp),
+            "Net Losses": thousand_separator(value=tnl),
+            "Fees": thousand_separator(value=total_fees),
             "Trade Count" : self.trades,
             "Wins" : self.wins,
             "Losses": self.losses
@@ -216,8 +219,8 @@ class StrategyBase(Strategy):
         sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
 
-        transaction_table: pd.DataFrame = pd.merge(buy_table, sell_table, on='id', how='inner')
-        transaction_data: pd.DataFrame = pd.merge(transaction_table, results_table, on='id', how='inner')
+        transaction_table: pd.DataFrame = pd.merge(buy_table, sell_table, on='id', how='left')
+        transaction_data: pd.DataFrame = pd.merge(transaction_table, results_table, on='id', how='left')
         transaction_data['total_fees'] = transaction_data['buying_fee'] + transaction_data['selling_fee']
         transaction_data['percentage_gain'] = round((transaction_data['exit_price'] - transaction_data['entry_price']) / transaction_data['entry_price'] * 100, 2)
         transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.days
@@ -339,13 +342,6 @@ class RSI_Strategy(StrategyBase):
     overbought : int
         The RSI value above which a sell signal is generated (default is 70).
     """
-
-    params: tuple[tuple[str, int]] = (
-        ('rsi_period', 14),
-        ('oversold', 30),
-        ('overbought', 70)
-    )
-
     def initialize_indicators(self) -> None:
         """
         Initializes the RSI indicator with the specified period.
@@ -354,7 +350,9 @@ class RSI_Strategy(StrategyBase):
         -------
         None
         """
-        self.rsi = indicators.RSI(period=self.params.rsi_period)
+        self.params: dict = strat.get(self.__class__.__name__)
+
+        self.rsi: indicators = indicators.RSI(period=self.params.get('Period'))
 
     def buy_signal(self) -> bool:
         """
@@ -369,7 +367,7 @@ class RSI_Strategy(StrategyBase):
         """
         return (
             self.position.size == 0
-            and self.rsi < self.params.oversold
+            and self.rsi < self.params.get('Oversold')
         )
 
     def sell_signal(self) -> bool:
@@ -385,7 +383,7 @@ class RSI_Strategy(StrategyBase):
         """
         return (
             self.position.size > 0
-            and self.rsi > self.params.overbought
+            and self.rsi > self.params.get('Overbought')
         )
 
 class GoldenCross(StrategyBase):
@@ -416,12 +414,6 @@ class GoldenCross(StrategyBase):
     slow : int
         The period for the slow EMA (default is 200).
     """
-
-    params: tuple[tuple[str, int]] = (
-        ('fast', 50),
-        ('slow', 200)
-    )
-
     def initialize_indicators(self) -> None:
         """
         Initializes the EMA indicators and the crossover detector.
@@ -430,9 +422,13 @@ class GoldenCross(StrategyBase):
         -------
         None
         """
-        self.slow_ma = indicators.EMA(self.datas[0].close, period=self.params.fast, plotname='50d MA')
-        self.fast_ma = indicators.EMA(self.datas[0].close, period=self.params.slow, plotname='200d MA')
-        self.goldencross = indicators.CrossOver(self.slow_ma, self.fast_ma)
+        self.params: dict = strat.get(self.__class__.__name__)
+        self.fast_val: int = self.params.get('Fast EMA')
+        self.slow_val: int = self.params.get('Slow EMA')
+
+        self.slow_ema: indicators = indicators.EMA(self.datas[0].close, period=self.fast_val, plotname=f'{self.fast_val}d EMA')
+        self.fast_ema: indicators = indicators.EMA(self.datas[0].close, period=self.slow_val, plotname=f'{self.slow_val}d EMA')
+        self.goldencross: indicators = indicators.CrossOver(self.slow_ema, self.fast_ema)
 
     def buy_signal(self) -> bool:
         """
@@ -448,7 +444,7 @@ class GoldenCross(StrategyBase):
         return (
             self.position.size == 0
             and self.goldencross == 1
-            and self.data.close[0] > (self.slow_ma[0] and self.slow_ma[-1])
+            and self.data.close[0] > (self.slow_ema[0] and self.slow_ema[-1])
             )
 
     def sell_signal(self) -> bool:
@@ -467,7 +463,7 @@ class GoldenCross(StrategyBase):
             and self.goldencross == -1
             )
 
-class Bollinger_Bands(StrategyBase):
+class BollingerBands(StrategyBase):
     """
     Strategy: Bollinger Bands
 
@@ -491,12 +487,6 @@ class Bollinger_Bands(StrategyBase):
     stddev : int
         The number of standard deviations for the Bollinger Bands (default is 2).
     """
-    
-    params: tuple[tuple[str, int]] = (
-        ('period', 20),
-        ('stddev', 2)
-    )
-
     def initialize_indicators(self):
         """
         Initializes the Bollinger Bands indicator.
@@ -505,7 +495,8 @@ class Bollinger_Bands(StrategyBase):
         -------
         None
         """
-        self.bbands = indicators.BollingerBands(self.data, period=self.params.period, devfactor=self.params.stddev)
+        self.params: dict = strat.get(self.__class__.__name__)
+        self.bbands: indicators = indicators.BollingerBands(self.data, period=self.params.get('Period'), devfactor=self.params.get('Standard Dev'))
 
     def buy_signal(self) -> bool:
         """
@@ -579,14 +570,6 @@ class IchimokuCloud(StrategyBase):
     shift : int
         The shift for the Chikou Span calculation (default is 26).
     """
-
-    params: tuple[tuple[str, int]] = (
-        ('tenkan', 9),
-        ('kijun', 26),
-        ('senkou', 52),
-        ('shift', 26)
-    )
-
     def initialize_indicators(self) -> None:
         """
         Initializes the Ichimoku Cloud indicator components with the specified parameters.
@@ -595,18 +578,19 @@ class IchimokuCloud(StrategyBase):
         -------
         None
         """
-        self.ichi = indicators.Ichimoku(
-            tenkan=self.params.tenkan,
-            kijun=self.params.kijun,
-            senkou=self.params.senkou,
+        self.params: dict = strat.get(self.__class__.__name__)
+        self.ichi: indicators = indicators.Ichimoku(
+            tenkan=self.params.get('Tenkan'),
+            kijun=self.params.get('Kijun'),
+            senkou=self.params.get('Senkou'),
             plot=True
         )
 
-        self.tenkan_sen = self.ichi.tenkan_sen
-        self.kijun_sen = self.ichi.kijun_sen
-        self.senkou_span_a = self.ichi.senkou_span_a
-        self.senkou_span_b = self.ichi.senkou_span_b
-        self.chikou_span = self.ichi.chikou_span(-self.params.shift)
+        self.tenkan_sen: float = self.ichi.tenkan_sen
+        self.kijun_sen: float = self.ichi.kijun_sen
+        self.senkou_span_a: float = self.ichi.senkou_span_a
+        self.senkou_span_b: float = self.ichi.senkou_span_b
+        self.chikou_span: int = self.ichi.chikou_span(-self.params.get('Shift'))
 
     def buy_signal(self) -> bool:
         """
@@ -650,9 +634,113 @@ class IchimokuCloud(StrategyBase):
             and (self.data.close[0] < self.senkou_span_b[0])
             )
 
-strategies_dict: dict = {
+class MACD(StrategyBase):
+    def initialize_indicators(self) -> None:
+        """
+        Initializes the RSI indicator with the specified period.
+
+        Returns
+        -------
+        None
+        """
+        self.params: dict = strat.get(self.__class__.__name__)
+        self.macd: indicators = indicators.MACDHisto(
+            self.data.close,
+            period_me1=self.params.get('Fast MA'),
+            period_me2=self.params.get('Slow MA'),
+            period_signal=self.params.get('Signal')
+        )
+
+        self.crossover: indicators = indicators.CrossOver(self.macd.macd, self.macd.signal)
+
+    def buy_signal(self) -> bool:
+        """
+        Checks if a buy signal is generated.
+
+        A buy signal is generated when the RSI is below the oversold threshold and there is no existing position.
+
+        Returns
+        -------
+        bool
+            True if the RSI is below the oversold threshold and there is no existing position, otherwise False.
+        """
+        return (
+            self.position.size == 0
+            and self.crossover > 0
+        )
+
+    def sell_signal(self) -> bool:
+        """
+        Checks if a sell signal is generated.
+
+        A sell signal is generated when the RSI is above the overbought threshold and there is an existing position.
+
+        Returns
+        -------
+        bool
+            True if the RSI is above the overbought threshold and there is an existing position, otherwise False.
+        """
+        return (
+            self.position.size > 0
+            and self.macd < 0
+        )
+
+class GoldenRatio(StrategyBase):
+    """
+    Golden Ratio trading strategy based on Fibonacci retracement and extension levels.
+
+    Parameters
+    ----------
+    lookback_period : int
+        The number of periods to look back to determine the highest and lowest prices.
+    extension_target : float
+        The Fibonacci extension level for take profit.
+    stop_loss_pct : float
+        The percentage of loss to trigger a stop loss.
+    """
+    def initialize_indicators(self):
+        self.params: dict = strat.get(self.__class__.__name__)
+        self.highest: indicators = indicators.Highest(self.data.high, period=self.params.get('Lookback'), plot=False, subplot=False)
+        self.lowest: indicators = indicators.Lowest(self.data.low, period=self.params.get('Lookback'), plot=False, subplot=False)
+        self.entry_price: float|None = None
+        self.fib_618: float|None = None
+        self.fib_extension: float|None = None
+
+    def buy_signal(self) -> bool:
+        return (
+            self.position.size == 0
+            and self.data.close[0] <= (self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618))
+        )
+
+    def next(self):
+        if not self.position:
+            if self.buy_signal():
+                self.entry_price: float = self.data.close[0]
+                self.fib_618: float = self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618)
+                self.fib_extension: float = self.highest[0] + ((self.highest[0] - self.lowest[0]) * self.params.get('Extension Target'))
+                self.stop_loss: float = self.entry_price * (1 - self.params.get('Stop-Loss %'))
+
+                size_to_buy: int = math.floor(self.broker.getvalue() / self.data.close[0]) * 0.8
+                self.buy(size=size_to_buy)
+
+        else:
+            if self.sell_signal():
+                self.sell(size=self.position.size)
+
+    def sell_signal(self) -> bool:
+        return (
+            self.position.size > 0
+            and (
+                self.data.close[0] >= self.fib_extension
+                or self.data.close[0] <= self.stop_loss
+            )
+        )
+
+strategies_dict: dict[str, Strategy] = {
+    "MACD Strategy": MACD,
     "RSI Strategy": RSI_Strategy,
-    "Bollinger Bands": Bollinger_Bands,
+    "Ichimoku Cloud": IchimokuCloud,
+    "Bollinger Bands": BollingerBands,
     "Golden Crossover": GoldenCross,
-    "Ichimoku Cloud": IchimokuCloud
+    "Fibonacci Strategy": GoldenRatio
 }
