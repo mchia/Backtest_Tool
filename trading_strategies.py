@@ -45,7 +45,7 @@ class StrategyBase(Strategy):
         Unique identifier for each trade.
     """
 
-    def __init__(self, ticker: str, interval: str) -> None:
+    def __init__(self, ticker: str, interval: str, params: dict = None) -> None:
         """
         Initializes the strategy with ticker symbol and data interval.
 
@@ -58,6 +58,7 @@ class StrategyBase(Strategy):
         """
         self.ticker: str = ticker
         self.interval: str = interval
+        self.params = params if params else strat.get(self.__class__.__name__)
         self.initialize_indicators()
 
         self.dataclose: float = self.datas[0].close
@@ -350,8 +351,6 @@ class RSI_Strategy(StrategyBase):
         -------
         None
         """
-        self.params: dict = strat.get(self.__class__.__name__)
-
         self.rsi: indicators = indicators.RSI(period=self.params.get('Period'))
 
     def buy_signal(self) -> bool:
@@ -422,7 +421,6 @@ class GoldenCross(StrategyBase):
         -------
         None
         """
-        self.params: dict = strat.get(self.__class__.__name__)
         self.fast_val: int = self.params.get('Fast EMA')
         self.slow_val: int = self.params.get('Slow EMA')
 
@@ -495,7 +493,6 @@ class BollingerBands(StrategyBase):
         -------
         None
         """
-        self.params: dict = strat.get(self.__class__.__name__)
         self.bbands: indicators = indicators.BollingerBands(self.data, period=self.params.get('Period'), devfactor=self.params.get('Standard Dev'))
 
     def buy_signal(self) -> bool:
@@ -578,7 +575,6 @@ class IchimokuCloud(StrategyBase):
         -------
         None
         """
-        self.params: dict = strat.get(self.__class__.__name__)
         self.ichi: indicators = indicators.Ichimoku(
             tenkan=self.params.get('Tenkan'),
             kijun=self.params.get('Kijun'),
@@ -643,7 +639,6 @@ class MACD(StrategyBase):
         -------
         None
         """
-        self.params: dict = strat.get(self.__class__.__name__)
         self.macd: indicators = indicators.MACDHisto(
             self.data.close,
             period_me1=self.params.get('Fast MA'),
@@ -699,7 +694,6 @@ class GoldenRatio(StrategyBase):
         The percentage of loss to trigger a stop loss.
     """
     def initialize_indicators(self):
-        self.params: dict = strat.get(self.__class__.__name__)
         self.highest: indicators = indicators.Highest(self.data.high, period=self.params.get('Lookback'), plot=False, subplot=False)
         self.lowest: indicators = indicators.Lowest(self.data.low, period=self.params.get('Lookback'), plot=False, subplot=False)
         self.entry_price: float|None = None

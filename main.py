@@ -47,6 +47,7 @@ class MainWindow:
         self.panedwindow: tb.PanedWindow = tb.PanedWindow(self.root, orient='horizontal')
         self.panedwindow.pack(fill='both', expand=True)
         self.param_widgets: list = []
+        self.temp_params: dict = {}
 
         self.selection_panel()
         self.display_params()
@@ -70,76 +71,80 @@ class MainWindow:
         -------
         None
         """
+        header_font: tuple[str, int, str] = ('Segoe UI', 22, 'bold')
+        subheader_font: tuple[str, int, str] = ('Segoe UI', 14, 'bold')
+        entry_font: tuple[str, int] = ('Segoe UI', 12)
+        entry_width: int = 20
+        global_width: int = 18
+        date_width: int = 14
+
         self.selection_pane = tb.Frame(self.panedwindow, padding=10)
         self.panedwindow.add(child=self.selection_pane)
 
         # Title Label
-        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Backtester', font=('Segoe UI', 22, 'bold'), anchor='w')
+        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Backtester', font=header_font, anchor='w')
         self.title.pack(anchor='w', pady=10)
 
         # Themer
-        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Theme', font=('Segoe UI', 16, 'bold'), anchor='w')
+        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Theme', font=subheader_font, anchor='w')
         self.title.pack(anchor='w')
 
-        self.themer: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(tb.Style().theme_names()), width=19)
+        self.themer: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(tb.Style().theme_names()), width=global_width, font=entry_font)
         self.themer.pack(anchor='w', pady=5)
         self.themer.set('superhero')
         self.themer.bind("<<ComboboxSelected>>", self.change_theme)
 
         # Ticker
-        self.ticker_label: tb.Label = tb.Label(master=self.selection_pane, text='Ticker', font=('Segoe UI', 16 , 'bold'), anchor='w')
-        self.ticker_label.pack(anchor='w', pady=(20,0))
+        self.ticker_label: tb.Label = tb.Label(master=self.selection_pane, text='Ticker', font=subheader_font, anchor='w')
+        self.ticker_label.pack(anchor='w', pady=(15,0))
         
-        self.ticker_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=20)
+        self.ticker_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.ticker_entry.pack(anchor='w', pady=5)
         self.ticker_entry.insert(0, 'TSLA')
 
         # Interval
-        self.interval_label: tb.Label = tb.Label(master=self.selection_pane, text='Interval', font=('Segoe UI', 16 , 'bold'), anchor='w')
+        self.interval_label: tb.Label = tb.Label(master=self.selection_pane, text='Interval', font=subheader_font, anchor='w')
         self.interval_label.pack(anchor='w', pady=(15, 0))
 
-        self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(intervals.keys()), width=19)
+        self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(intervals.keys()), width=global_width, font=entry_font)
         self.interval.pack(anchor='w', pady=5)
         self.interval.insert(0, 'Daily')
 
         # Capital
-        self.initial_balance: tb.Label = tb.Label(master=self.selection_pane, text='Starting Balance', font=('Segoe UI', 16 , 'bold'), anchor='w')
+        self.initial_balance: tb.Label = tb.Label(master=self.selection_pane, text='Starting Balance', font=subheader_font, anchor='w')
         self.initial_balance.pack(anchor='w', pady=(15, 0))
 
-        self.balance_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=20)
+        self.balance_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.balance_entry.pack(anchor='w', pady=5)
         self.balance_entry.insert(0, '100000')
 
         # Commission
-        self.commission_label: tb.Label = tb.Label(master=self.selection_pane, text='Commission', font=('Segoe UI', 16 , 'bold'), anchor='w')
+        self.commission_label: tb.Label = tb.Label(master=self.selection_pane, text='Commission', font=subheader_font, anchor='w')
         self.commission_label.pack(anchor='w', pady=(15, 0))
 
-        self.commission_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=20)
+        self.commission_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.commission_entry.pack(anchor='w', pady=5)
         self.commission_entry.insert(0, '0.001')
 
         # Date Selection
-        self.date_label: tb.Label = tb.Label(master=self.selection_pane, text='Date Range', font=('Segoe UI', 16 , 'bold'), anchor='w')
+        self.date_label: tb.Label = tb.Label(master=self.selection_pane, text='Date Range', font=subheader_font, anchor='w')
         self.date_label.pack(anchor='w', pady=(15, 0))
 
         start_from = datetime.date.today().replace(year=datetime.date.today().year - 4)
-        self.date_from: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=17, startdate=start_from)
+        self.date_from: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=date_width, startdate=start_from)
         self.date_from.pack(anchor='w', pady=5)
 
-        self.date_to: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=17)
+        self.date_to: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=date_width)
         self.date_to.pack(anchor='w', pady=5)
 
         # Strategy Selection
-        self.strategies: tb.Label = tb.Label(master=self.selection_pane, text='Strategy', font=('Segoe UI', 16 , 'bold'), anchor='w')
+        self.strategies: tb.Label = tb.Label(master=self.selection_pane, text='Strategy', font=subheader_font, anchor='w')
         self.strategies.pack(anchor='w', pady=(15, 0))
 
-        self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=19)
+        self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=global_width, font=entry_font)
         self.base_strategies.pack(anchor='w', pady=5)
         self.base_strategies.insert(0, 'RSI Strategy')
         self.base_strategies.bind("<<ComboboxSelected>>", self.display_params)
-
-        self.data_sourcing: tb.Button = tb.Button(master=self.selection_pane, text='Execute Backtest', command=self.execute_backtest)
-        self.data_sourcing.pack(anchor='w', pady=20)
 
     def plot_panel(self) -> None:
         """
@@ -215,9 +220,14 @@ class MainWindow:
         -------
         None
         """
+        # Clear any previously created widgets
         for widget in self.param_widgets:
             widget.destroy()
         self.param_widgets.clear()
+
+        # Clear the Execute Backtest button if it already exists
+        if hasattr(self, 'data_sourcing'):
+            self.data_sourcing.destroy()
 
         # Get selected strategy and parameters
         selected_strategy: str = self.base_strategies.get()
@@ -229,18 +239,31 @@ class MainWindow:
             frame = tb.Frame(master=self.selection_pane)
             frame.pack(anchor='w', pady=(5, 0))
 
+            label_font = ('Segoe UI', 12)
+            entry_width = 4
+
             # Create and pack the label
-            param_key = tb.Label(master=frame, text=key, font=('Segoe UI', 12), width=15, anchor='w')
+            param_key = tb.Label(master=frame, text=key, font=label_font, width=15, anchor='w')
             param_key.pack(side='left')
 
             # Create and pack the entry box
-            param_entry = tb.Entry(master=frame, width=4)
+            param_entry = tb.Entry(master=frame, width=entry_width, font=label_font)
             param_entry.pack(side='left')
             param_entry.insert(0, value)
             param_entry.configure(justify='center')
 
+            self.temp_params[key] = value
+            param_entry.bind('<KeyRelease>', lambda e, k=key, entry=param_entry: self.update_temp_params(k, entry))
+
             # Store references to widgets for future use
             self.param_widgets.append(frame)
+
+        self.data_sourcing = tb.Button(master=self.selection_pane, text='Execute Backtest', command=self.execute_backtest)
+        self.data_sourcing.pack(anchor='w', pady=20)
+
+    def update_temp_params(self, key, entry):
+        """Updates the temporary parameter dictionary with new values from entry boxes."""
+        self.temp_params[key] = int(entry.get())
 
     def change_theme(self, event) -> None:
         """
@@ -354,6 +377,7 @@ class MainWindow:
                 strategy=selected_strategy,
                 interval=fields['Interval'],
                 commission=float(fields['Commission']),
+                params=self.temp_params
             ).execute()
 
             backtest_output: list = backtrader.runstrats[0][0]
