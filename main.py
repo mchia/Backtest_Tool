@@ -48,6 +48,9 @@ class MainWindow:
         self.panedwindow.pack(fill='both', expand=True)
         self.param_widgets: list = []
         self.temp_params: dict = {}
+        self.trade_results: list = []
+        self.ticker_profile: list = []
+        self.widget_references: dict = {}
 
         self.selection_panel()
         self.display_params()
@@ -82,7 +85,7 @@ class MainWindow:
         self.panedwindow.add(child=self.selection_pane)
 
         # Title Label
-        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Backtester', font=header_font, anchor='w')
+        self.title: tb.Label = tb.Label(master=self.selection_pane, text='Backtester', font=header_font, anchor='w', bootstyle='primary')
         self.title.pack(anchor='w', pady=10)
 
         # Themer
@@ -177,30 +180,33 @@ class MainWindow:
         -------
         None
         """
+        header_font: tuple[str, int, str] = ('Segoe UI', 14, 'bold')
+
         self.details_pane: tb.Frame = tb.Frame(self.panedwindow, padding=10)
         self.panedwindow.add(self.details_pane, weight=1)
 
-        # Text box to display information related to ticker and trades.
-        self.info_text: str | None = None
-        self.information: tb.Label = tb.Label(master=self.details_pane, text=self.info_text, font=('Segoe UI', 16))
-        self.information.pack(anchor='w', padx=10, pady=10)
+        self.profile_frame: tb.Frame = tb.Frame(master=self.details_pane)
+        self.profile_frame.pack(anchor='w', fill='x')
+        profile_label: tb.Label = tb.Label(master=self.profile_frame, text='Ticker Profile', font=header_font, bootstyle="info")
+        profile_label.pack(fill='x', padx=5, pady=5, anchor='w')
 
-        self.backtest_results: str | None = None
-        self.performance: tb.Label = tb.Label(master=self.details_pane, text=self.backtest_results, font=('Segoe UI', 16))
-        self.performance.pack(anchor='w', padx=10, pady=10)
+        self.trade_results_frame: tb.Frame = tb.Frame(self.details_pane)
+        self.trade_results_frame.pack(anchor='w', fill='x',)
+        results_label: tb.Label = tb.Label(master=self.trade_results_frame, text='Trade Statistics', font=header_font, bootstyle="info")
+        results_label.pack(fill='x', padx=5, pady=5, anchor='w')
 
         self.historical_data: pd.DataFrame | None = None
         self.export_hist: tb.Button = tb.Button(
-            master=self.details_pane, 
-            text='Export Stock Data', 
+            master=self.details_pane,
+            text='Export Stock Data',
             command=lambda: self.export_csv(data=self.historical_data)
         )
         self.export_hist.pack(anchor='w', padx=10, pady=10)
-        
+
         self.trade_logs: pd.DataFrame | None = None
         self.export_trades: tb.Button = tb.Button(
-            master=self.details_pane, 
-            text='Export Trade Data', 
+            master=self.details_pane,
+            text='Export Trade Data',
             command=lambda: self.export_csv(data=self.trade_logs)
         )
         self.export_trades.pack(anchor='w', padx=10, pady=10)
@@ -265,38 +271,118 @@ class MainWindow:
         """Updates the temporary parameter dictionary with new values from entry boxes."""
         self.temp_params[key] = int(entry.get())
 
+    def display_summary(self, data: dict, summary_type: str) -> None:
+        """
+        Creates labels based on the information provided and adds headers to separate sections.
+        Additionally, stores references to the labels and value labels for dynamic theme updates.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing information to display as key-value pairs.
+        summary_type : str
+            Indicates the type of summary to display. Expected values are 'trade' or 'profile'.
+
+        Returns
+        -------
+        None
+        """
+        theme: str = self.themer.get()
+        dark_themes: list[str] = ['darkly', 'superhero', 'cyborg', 'vapor']        
+
+        if summary_type == 'trade':
+            widget_list: list = self.trade_results
+            frame: tb.Frame = self.trade_results_frame
+            value_cols: list[str] = ['Portfolio Value', 'Unrealised P/L', 'Net P/L']
+        elif summary_type == 'profile':
+            widget_list: list = self.ticker_profile
+            frame: tb.Frame = self.profile_frame
+            value_cols: list = []
+
+        # Clear previous widgets and references
+        for widget in widget_list:
+            widget.destroy()
+        widget_list.clear()
+
+        # Store the widgets for later theme updates
+        self.widget_references[summary_type] = []
+
+        # Create and display new rows for the summary inside the appropriate frame
+        for key, value in data.items():
+            label_font: tuple[str, int, str] = ('Segoe UI', 12, 'bold')
+            value_font: tuple[str, int] = ('Segoe UI', 12)
+
+            row_frame: tb.Frame = tb.Frame(master=frame)
+            row_frame.pack(fill='x', padx=5, pady=2)
+
+            # Create the label for each statistic
+            label: tb.Label = tb.Label(master=row_frame, text=f"{key}:", font=label_font, bootstyle="primary")
+            label.pack(side='left', padx=5)
+
+            # Set the bootstyle based on the theme and whether it's a value column
+            if summary_type == 'trade' and key in value_cols:
+                if '▲' in value:
+                    bootstyle: str = "success"
+                elif '▼' in value:
+                    bootstyle: str = "danger"
+                else:
+                    bootstyle: str = "dark" if theme not in dark_themes else "light"
+                
+            else:
+                bootstyle: str = "dark" if theme not in dark_themes else "light"
+
+            # Create the value label
+            value_label = tb.Label(master=row_frame, text=value, font=value_font, bootstyle=bootstyle)
+            value_label.pack(side='left', padx=10)
+
+            # Store widget references for future theme updates
+            self.widget_references[summary_type].append((label, value_label))
+
+            # Keep track of the row_frame for clearing later
+            widget_list.append(row_frame)
+
     def change_theme(self, event) -> None:
         """
-        Updates the theme of the GUI whenever a new theme is selected from the dropdown 
-        in a ttkbootstrap-based application.
-
-        This method retrieves the selected theme using ttkbootstrap, applies it to the 
-        entire GUI, and updates the background colors of specific widgets (e.g., canvas 
-        and root window) to match the new theme's style.
-
-    Parameters
-    ----------
-    event : ttkbootstrap.Event
-        The event that triggers this method, typically when a new theme is selected 
-        from a dropdown box. The event is passed automatically when binding theme changes.
-
-    Returns
-    -------
-    None
-        This method does not return any values but updates the theme and the background 
-        colors of the widgets in the ttkbootstrap-based application.
-    """
+        Updates the theme of the GUI whenever a new theme is selected and applies 
+        the new styles to the relevant summary widgets dynamically.
+        """
         selected_theme: str = self.themer.get()
         style: tb.Style = tb.Style(theme=selected_theme)
 
         theme_bg: str = style.colors.get('bg')
 
-        # Update the colors of your widgets
+        # Update the canvas and root window
         self.canvas.config(bg=theme_bg)
         self.root.config(bg=theme_bg)
 
-        style.theme_use(selected_theme)
+        style.theme_use(themename=selected_theme)
 
+        # Update all widgets in the summary frames with the new theme
+        self.update_summary_widgets()
+
+    def update_summary_widgets(self) -> None:
+        """
+        Updates the theme-related styles of all labels and value labels
+        in the summaries displayed.
+        """
+        theme: str = self.themer.get()
+        dark_themes: list[str] = ['darkly', 'superhero', 'cyborg', 'vapor', 'solar']
+
+        # Loop through stored widget references and update their styles
+        for summary_type, widget_list in self.widget_references.items():
+            for label, value_label in widget_list:
+                # Update label bootstyle for consistency with the theme
+                label.config(bootstyle="primary")
+
+                # Determine bootstyle for the value labels based on the theme
+                if summary_type == 'trade':
+                    bootstyle = "success" if '▲' in value_label.cget('text') else "danger"
+                else:
+                    bootstyle = "dark" if theme not in dark_themes else "light"
+                
+                # Update the value label's bootstyle
+                value_label.config(bootstyle=bootstyle)
+                
     def execute_backtest(self) -> None:
         """
         Executes a backtest based on user-provided inputs from the GUI fields. 
@@ -363,6 +449,9 @@ class MainWindow:
                 interval=selected_interval
             )
 
+            company_info: dict = source_data.ticker_profile()
+            self.display_summary(data=company_info, summary_type='profile')
+
             # Call retrieve_data() method to return:
                 # datafeed: bt.feeds.PandasData
                 # data: pd.DataFrame
@@ -377,13 +466,14 @@ class MainWindow:
                 strategy=selected_strategy,
                 interval=fields['Interval'],
                 commission=float(fields['Commission']),
+                disp_pane=self.details_pane,
                 params=self.temp_params
             ).execute()
 
             backtest_output: list = backtrader.runstrats[0][0]
             self.trade_logs: pd.DataFrame = backtest_output.trade_logs()
-            self.backtest_results: str = backtest_output.print_trade_stats()
-            self.performance.config(text=self.backtest_results)
+            trade_dict: dict = backtest_output.print_trade_stats()
+            self.display_summary(data=trade_dict, summary_type='trade')
 
             # Initalise BackPlotter
             plotter = BackPlotter(
@@ -391,10 +481,7 @@ class MainWindow:
             )
             fig = plotter.bt_plot()
             plotter.display_plot(fig=fig, canvas=self.canvas)
-
-            self.info_text: str = source_data.ticker_profile()
-            self.information.config(text=self.info_text)
-
+    
     def export_csv(self, data: pd.DataFrame) -> None:
         """
         Exports the given DataFrame to a CSV file.
@@ -406,7 +493,6 @@ class MainWindow:
                 data.to_csv(path_or_buf=file_path, header=True, index=False)
         else:
             Messagebox.show_error("No data available to export.")
-
 
 window = MainWindow()
 window.root.mainloop()

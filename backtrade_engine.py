@@ -35,7 +35,7 @@ class BacktraderEngine:
         Configures the cerebro engine with the provided datafeed and strategy, runs the backtest,
         and returns the cerebro instance.
     """
-    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str, commission: float, params: dict|None) -> None:
+    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str, commission: float, disp_pane: tb.Frame, params: dict|None) -> None:
         """
         Initializes the cerebro engine with a capital, datafeed, ticker, and strategy.
 
@@ -58,7 +58,9 @@ class BacktraderEngine:
         self.ticker: str = ticker
         self.strategy: str = strategy
         self.interval: str = interval
+        self.display_pane = disp_pane
         self.params: dict|None = params
+        self.capital: int = capital
 
         self.cerebro: bt.Cerebro = bt.Cerebro(stdstats=False)
         self.cerebro.broker.set_cash(capital)
@@ -79,7 +81,14 @@ class BacktraderEngine:
             The current instance of cerebro.
         """
         self.cerebro.adddata(data=self.datafeed)
-        self.cerebro.addstrategy(strategy=self.strategy, ticker=self.ticker, interval=self.interval, params=self.params)
+        self.cerebro.addstrategy(
+            strategy=self.strategy,
+            capital=self.capital,
+            ticker=self.ticker,
+            interval=self.interval,
+            disp_pane=self.display_pane,
+            params=self.params
+            )
         self.cerebro.run()
         return self.cerebro
 

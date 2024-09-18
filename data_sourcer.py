@@ -81,7 +81,7 @@ class DataSourcer:
         
         return (data_feed, data)
     
-    def ticker_profile(self) -> str:
+    def ticker_profile(self) -> dict:
         """
         Retrieves and formats information about a specific stock ticker using the Yahoo Finance API.
 
@@ -98,15 +98,13 @@ class DataSourcer:
         stock_info: dict = stock.info
 
         company_info: dict = {
-            "Company Name": stock_info.get("longName"),
             "Ticker": stock_info.get("symbol"),
+            "Company Name": stock_info.get("longName"),
             "Industry": stock_info.get("industry"),
             "Sector": stock_info.get("sector"),
             "Market Cap": convert_number(value=stock_info.get("marketCap")),
             "Volume": convert_number(value=stock_info.get("volume")),
-            # "Financials": stock_info.financials if stock_info.financials is not None else "No financials available"
+            # "Financials": stock.financials
         }
 
-        info_text: str = "\n".join(f"{key}: {value}" for key, value in company_info.items())
-        
-        return info_text
+        return company_info

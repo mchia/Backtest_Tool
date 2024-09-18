@@ -1,5 +1,6 @@
 import math
 import pandas as pd
+import ttkbootstrap as tb
 from backtrader import Strategy, indicators
 from custom_methods import thousand_separator
 from strategy_params import strategy_params as strat
@@ -45,7 +46,7 @@ class StrategyBase(Strategy):
         Unique identifier for each trade.
     """
 
-    def __init__(self, ticker: str, interval: str, params: dict = None) -> None:
+    def __init__(self, ticker: str, interval: str, capital: int, disp_pane: tb.Frame, params: dict = None) -> None:
         """
         Initializes the strategy with ticker symbol and data interval.
 
@@ -59,6 +60,8 @@ class StrategyBase(Strategy):
         self.ticker: str = ticker
         self.interval: str = interval
         self.params = params if params else strat.get(self.__class__.__name__)
+        self.display_pane = disp_pane
+        self.capita = capital
         self.initialize_indicators()
 
         self.dataclose: float = self.datas[0].close
@@ -170,43 +173,44 @@ class StrategyBase(Strategy):
 
         self.trade_id += 1
 
-    def print_trade_stats(self) -> str:
+    def print_trade_stats(self) -> dict:
         """
         Prints a summary of trade statistics, including account balance, profit, loss, and the number of trades.
-
-        Returns
-        -------
-        None
+        Clears existing row_frames before creating new ones.
         """
-        portfolio_value: float = self.cerebro.broker.getvalue()
-        ending_balance: float = self.cerebro.broker.getcash()
-        account_growth: float = round(100 * ((ending_balance - 100000) / 100000), 0)
-        tgp: float = round(self.total_gross_profit, 2)
-        tgl: float = round(self.total_gross_losses, 2)
+        capital: float = self.capital
 
-        tnp: float = round(self.total_net_profit, 2)
-        tnl: float = round(self.total_net_losses, 2)
+        # Realized and unrealized balances
+        realized_balance: float = round(self.cerebro.broker.getcash(), 2)
+        unrealized_balance: float = round(self.cerebro.broker.getvalue(), 2)
 
-        total_fees: float = round(self.total_fees, 2) * -1
+        # Calculate growth
+        unrealised_pnl: float = unrealized_balance - realized_balance
+        unrealised_growth: int = int(round(100 * ((unrealized_balance - capital) / capital), 0))
+
+        match unrealised_pnl:
+            case _ if unrealised_pnl > 0:
+                pnl_str: str = f"▲ {thousand_separator(value=abs(unrealised_pnl))}"
+            case _ if unrealised_pnl < 0:
+                pnl_str: str = f"▼ {thousand_separator(value=abs(unrealised_pnl))}"
+            case  _ if unrealised_pnl == 0:
+                pnl_str: str = f"{thousand_separator(value=0)}"
+
+        # Net profits and fees
+        net_pnl: float = round(self.total_gross_profit - self.total_net_losses, 2)
+        total_fees: float = round(self.total_fees, 2)
 
         result_summary: dict = {
-            "Starting Balance": thousand_separator(value=self.capital),
-            "Portfolio Value": thousand_separator(value=portfolio_value),
-            "Ending Balance": thousand_separator(value=ending_balance),
-            "Account Growth": f"▲ {account_growth}%" if account_growth > 0 else f"▼ {account_growth}%",
-            "Gross Profit": thousand_separator(value=tgp),
-            "Gross Losses": thousand_separator(value=tgl),
-            "Net Profit": thousand_separator(value=tnp),
-            "Net Losses": thousand_separator(value=tnl),
-            "Fees": thousand_separator(value=total_fees),
-            "Trade Count" : self.trades,
-            "Wins" : self.wins,
-            "Losses": self.losses
+            "Opening Balance": thousand_separator(value=capital),
+            "Portfolio Value": f"{thousand_separator(value=unrealized_balance)} ({'▲' if unrealised_growth > 0 else '▼'} {unrealised_growth}%)",
+            "Cash Balance": f"{thousand_separator(value=realized_balance)}",
+            "Unrealised P/L": pnl_str,
+            "Net P/L": f"{'▲' if net_pnl >= 0 else '▼'} {thousand_separator(value=abs(net_pnl))}",
+            "Fees": thousand_separator(value=abs(total_fees)),
+            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})"
         }
 
-        results_text: str = "\n".join(f"{key}: {value}" for key, value in result_summary.items())
-
-        return results_text
+        return result_summary
 
     def trade_logs(self) -> pd.DataFrame:
         """
