@@ -5,6 +5,21 @@ from typing import Optional, Tuple
 from custom_methods import convert_number
 from ttkbootstrap.dialogs import Messagebox
 
+intervals: dict = {
+    "1 Minute": "1m",
+    "2 Minutes": "2m",
+    "5 Minutes": "5m",
+    "15 Minutes": "15m",
+    "30 Minutes": "30m",
+    "90 Minutes": "90m",
+    "Hourly": "1h",
+    "Daily": "1d",
+    "5 Days": "5d",
+    "Weekly": "1wk",
+    "Monthly": "1mo",
+    "3 Months": "3mo"
+    }
+
 class DataSourcer:
     """
     Class that sources historical data for backtesting, through the Yahoo Finance API and returns it as a Pandas Dataframe.

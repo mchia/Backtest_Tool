@@ -55,6 +55,14 @@ def get_financial_ratios(ticker):
         return "Data Incomplete"
 
 # Example usage
-ticker = 'BTC-USD'
-performance = get_financial_ratios(ticker)
-print(f"The performance of {ticker} is: {performance}")
+# ticker = 'BTC-USD'
+# performance = get_financial_ratios(ticker)
+# print(f"The performance of {ticker} is: {performance}")
+
+import datetime
+
+end_date: datetime.date = datetime.date.today()
+
+start_date: datetime.date = end_date - datetime.timedelta(days=60)
+
+print(start_date)

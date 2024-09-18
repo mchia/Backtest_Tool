@@ -4,16 +4,10 @@ import backtrader as bt
 import ttkbootstrap as tb
 import trading_strategies as sb
 from tkinter import filedialog
-from data_sourcer import DataSourcer
 from ttkbootstrap.dialogs import Messagebox
+from data_sourcer import DataSourcer, intervals
 from strategy_params import strategy_params as strat
 from backtrade_engine import BacktraderEngine, BackPlotter
-
-intervals: dict = {
-    "Daily": "1d",
-    "Weekly": "1wk",
-    "Monthly": "1mo"
-    }
 
 class MainWindow:
     """
@@ -112,6 +106,7 @@ class MainWindow:
         self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(intervals.keys()), width=global_width, font=entry_font)
         self.interval.pack(anchor='w', pady=5)
         self.interval.insert(0, 'Daily')
+        self.interval.bind(sequence="<<ComboboxSelected>>", func=self.set_date)
 
         # Capital
         self.initial_balance: tb.Label = tb.Label(master=self.selection_pane, text='Starting Balance', font=subheader_font, anchor='w')
@@ -132,9 +127,12 @@ class MainWindow:
         # Date Selection
         self.date_label: tb.Label = tb.Label(master=self.selection_pane, text='Date Range', font=subheader_font, anchor='w')
         self.date_label.pack(anchor='w', pady=(15, 0))
+        
+        self.date_start_frame: tb.Frame = tb.Frame(master=self.selection_pane)
+        self.date_start_frame.pack(anchor='w', fill='x')
 
         start_from = datetime.date.today().replace(year=datetime.date.today().year - 4)
-        self.date_from: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=date_width, startdate=start_from)
+        self.date_from: tb.DateEntry = tb.DateEntry(master=self.date_start_frame, bootstyle='secondary', dateformat='%Y-%m-%d', width=date_width, startdate=start_from)
         self.date_from.pack(anchor='w', pady=5)
 
         self.date_to: tb.DateEntry = tb.DateEntry(master=self.selection_pane, bootstyle='secondary', dateformat='%Y-%m-%d', width=date_width)
@@ -147,7 +145,7 @@ class MainWindow:
         self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=global_width, font=entry_font)
         self.base_strategies.pack(anchor='w', pady=5)
         self.base_strategies.insert(0, 'RSI Strategy')
-        self.base_strategies.bind("<<ComboboxSelected>>", self.display_params)
+        self.base_strategies.bind(sequence="<<ComboboxSelected>>", func=self.display_params)
 
     def plot_panel(self) -> None:
         """
@@ -211,6 +209,33 @@ class MainWindow:
         )
         self.export_trades.pack(anchor='w', padx=10, pady=10)
 
+    def set_date(self, event) -> None:
+        """
+        Automatically adjusts dates based on selected interval, due to constraints with the Yahoo Finance API.
+        1m only has 7 day's worth of data available.
+        Anything <1d only has 60 days worth of data available.
+        """
+        interval: str = self.interval.get()
+        end_date: datetime.date = datetime.date.today()
+
+        if interval == "1 Minute":
+            start_date: datetime.date = end_date - datetime.timedelta(days=7)
+        elif interval in ['2m', '5m', '15m', '30m', '1h', '90m']:
+            start_date: datetime.date = end_date - datetime.timedelta(days=60)
+        else:
+            start_date = datetime.date.today().replace(year=datetime.date.today().year - 4)
+
+        self.date_from.pack_forget()
+
+        self.date_from = tb.DateEntry(
+            master=self.date_start_frame,
+            bootstyle='secondary',
+            dateformat='%Y-%m-%d',
+            width=14,
+            startdate=start_date
+        )
+        self.date_from.pack(anchor='w', pady=5)
+        
     def display_params(self, event=None) -> None:
         """
         Creates labels and entry boxes based on the selected trading strategy,
