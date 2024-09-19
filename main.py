@@ -93,7 +93,7 @@ class MainWindow:
 
         # Ticker
         self.ticker_label: tb.Label = tb.Label(master=self.selection_pane, text='Ticker', font=subheader_font, anchor='w')
-        self.ticker_label.pack(anchor='w', pady=(15,0))
+        self.ticker_label.pack(anchor='w', pady=(10,0))
         
         self.ticker_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.ticker_entry.pack(anchor='w', pady=5)
@@ -101,7 +101,7 @@ class MainWindow:
 
         # Interval
         self.interval_label: tb.Label = tb.Label(master=self.selection_pane, text='Interval', font=subheader_font, anchor='w')
-        self.interval_label.pack(anchor='w', pady=(15, 0))
+        self.interval_label.pack(anchor='w', pady=(10, 0))
 
         self.interval: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(intervals.keys()), width=global_width, font=entry_font)
         self.interval.pack(anchor='w', pady=5)
@@ -110,7 +110,7 @@ class MainWindow:
 
         # Capital
         self.initial_balance: tb.Label = tb.Label(master=self.selection_pane, text='Starting Balance', font=subheader_font, anchor='w')
-        self.initial_balance.pack(anchor='w', pady=(15, 0))
+        self.initial_balance.pack(anchor='w', pady=(10, 0))
 
         self.balance_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.balance_entry.pack(anchor='w', pady=5)
@@ -118,7 +118,7 @@ class MainWindow:
 
         # Commission
         self.commission_label: tb.Label = tb.Label(master=self.selection_pane, text='Commission', font=subheader_font, anchor='w')
-        self.commission_label.pack(anchor='w', pady=(15, 0))
+        self.commission_label.pack(anchor='w', pady=(10, 0))
 
         self.commission_entry: tb.Entry = tb.Entry(master=self.selection_pane, width=entry_width, font=entry_font)
         self.commission_entry.pack(anchor='w', pady=5)
@@ -126,7 +126,7 @@ class MainWindow:
 
         # Date Selection
         self.date_label: tb.Label = tb.Label(master=self.selection_pane, text='Date Range', font=subheader_font, anchor='w')
-        self.date_label.pack(anchor='w', pady=(15, 0))
+        self.date_label.pack(anchor='w', pady=(10, 0))
         
         self.date_start_frame: tb.Frame = tb.Frame(master=self.selection_pane)
         self.date_start_frame.pack(anchor='w', fill='x')
@@ -140,7 +140,7 @@ class MainWindow:
 
         # Strategy Selection
         self.strategies: tb.Label = tb.Label(master=self.selection_pane, text='Strategy', font=subheader_font, anchor='w')
-        self.strategies.pack(anchor='w', pady=(15, 0))
+        self.strategies.pack(anchor='w', pady=(10, 0))
 
         self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=global_width, font=entry_font)
         self.base_strategies.pack(anchor='w', pady=5)
@@ -220,8 +220,8 @@ class MainWindow:
 
         if interval == "1 Minute":
             start_date: datetime.date = end_date - datetime.timedelta(days=7)
-        elif interval in ['2m', '5m', '15m', '30m', '1h', '90m']:
-            start_date: datetime.date = end_date - datetime.timedelta(days=60)
+        elif interval in ['2 Minutes', '5 Minutes', '15 Minutes', '30 Minutes', 'Hourly', '90 Minutes']:
+            start_date: datetime.date = end_date - datetime.timedelta(days=59)
         else:
             start_date = datetime.date.today().replace(year=datetime.date.today().year - 4)
 
@@ -294,7 +294,10 @@ class MainWindow:
 
     def update_temp_params(self, key, entry):
         """Updates the temporary parameter dictionary with new values from entry boxes."""
-        self.temp_params[key] = int(entry.get())
+        if key in ['Stop-Loss %', 'Extension Target']:
+            self.temp_params[key] = float(entry.get())
+        else:
+            self.temp_params[key] = int(entry.get())
 
     def display_summary(self, data: dict, summary_type: str) -> None:
         """
@@ -318,7 +321,7 @@ class MainWindow:
         if summary_type == 'trade':
             widget_list: list = self.trade_results
             frame: tb.Frame = self.trade_results_frame
-            value_cols: list[str] = ['Portfolio Value', 'Unrealised P/L', 'Net P/L']
+            value_cols: list[str] = ['Portfolio Value', 'Unrealised P/L', 'Account Value', 'Realised P/L']
         elif summary_type == 'profile':
             widget_list: list = self.ticker_profile
             frame: tb.Frame = self.profile_frame

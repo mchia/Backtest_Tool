@@ -80,6 +80,10 @@ class StrategyBase(Strategy):
         self.total_fees: float = 0
         self.trade_id: int = 1
 
+        self.realised_balance: list[float] = []
+        self.stop_loss: float|None = None
+        self.stopped_out: int = 0
+
     def start(self) -> None:
         """
         Initializes attributes and lists to hold trade data before the strategy starts running.
@@ -115,7 +119,8 @@ class StrategyBase(Strategy):
                         self.datas[0].datetime.date(0),
                         order.executed.price,
                         order.executed.comm,
-                        order.executed.size
+                        order.executed.size,
+                        self.stop_loss
                     ]
                 )
             else:
@@ -162,6 +167,7 @@ class StrategyBase(Strategy):
 
         self.trades += 1
         self.total_fees += fees
+        self.realised_balance.append(self.cerebro.broker.getcash())
         self.trade_results.append(
             [
                 self.trade_id,
@@ -178,36 +184,49 @@ class StrategyBase(Strategy):
         Prints a summary of trade statistics, including account balance, profit, loss, and the number of trades.
         Clears existing row_frames before creating new ones.
         """
-        capital: float = self.capital
+        capital: int = int(self.capital)
 
-        # Realized and unrealized balances
-        realized_balance: float = round(self.cerebro.broker.getcash(), 2)
-        unrealized_balance: float = round(self.cerebro.broker.getvalue(), 2)
+        realised_balance: float = self.realised_balance[-1]
+        unrealised_balance: float = round(self.cerebro.broker.getvalue(), 2)
+        portfolio_growth: float = 100 * ((unrealised_balance - capital) / capital)
+        portfolio_growth: float|int = round(number=portfolio_growth, ndigits=2) if portfolio_growth < 1 else int(round(number=portfolio_growth, ndigits=2))
 
-        # Calculate growth
-        unrealised_pnl: float = unrealized_balance - realized_balance
-        unrealised_growth: int = int(round(100 * ((unrealized_balance - capital) / capital), 0))
+        unrealised_pnl: float = unrealised_balance - realised_balance
+        realised_pnl: float = realised_balance - capital
+        realised_growth: int = 100 * ((realised_balance - capital) / capital)
+        realised_growth: float|int = round(number=realised_growth, ndigits=2) if realised_growth < 1 else int(round(number=realised_growth, ndigits=2))
 
-        match unrealised_pnl:
-            case _ if unrealised_pnl > 0:
-                pnl_str: str = f"▲ {thousand_separator(value=abs(unrealised_pnl))}"
-            case _ if unrealised_pnl < 0:
-                pnl_str: str = f"▼ {thousand_separator(value=abs(unrealised_pnl))}"
-            case  _ if unrealised_pnl == 0:
-                pnl_str: str = f"{thousand_separator(value=0)}"
+        total_fees: float = abs(round(self.total_fees, 2))
 
-        # Net profits and fees
-        net_pnl: float = round(self.total_gross_profit - self.total_net_losses, 2)
-        total_fees: float = round(self.total_fees, 2)
+        def acc_value(parameter: float) -> str:
+            match parameter:
+                case _ if parameter > capital:
+                    str_val: str = f"▲ ${thousand_separator(value=abs(parameter))}  ▲"
+                case _ if parameter < capital:
+                    str_val: str = f"▼ ${thousand_separator(value=abs(parameter))}  ▼"
 
+            return str_val
+        
+        def pl_value(parameter: float) -> str:
+            match parameter:
+                case _ if round(number=parameter, ndigits=0) == 0:
+                    str_val: str = "$0"
+                case _ if parameter > 0:
+                    str_val: str = f"▲ ${thousand_separator(value=abs(parameter))}"
+                case _ if parameter < 0:
+                    str_val: str = f"▼ ${thousand_separator(value=abs(parameter))}"
+            
+            return str_val
+        
         result_summary: dict = {
-            "Opening Balance": thousand_separator(value=capital),
-            "Portfolio Value": f"{thousand_separator(value=unrealized_balance)} ({'▲' if unrealised_growth > 0 else '▼'} {unrealised_growth}%)",
-            "Cash Balance": f"{thousand_separator(value=realized_balance)}",
-            "Unrealised P/L": pnl_str,
-            "Net P/L": f"{'▲' if net_pnl >= 0 else '▼'} {thousand_separator(value=abs(net_pnl))}",
-            "Fees": thousand_separator(value=abs(total_fees)),
-            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})"
+            "Opening Balance": f"${thousand_separator(value=capital)}",
+            "Account Value": f"{acc_value(parameter=realised_balance)}{realised_growth}%",
+            "Portfolio Value": f"{acc_value(parameter=unrealised_balance)}{portfolio_growth}%",
+            "Realised P/L": pl_value(parameter=realised_pnl),
+            "Unrealised P/L": pl_value(parameter=unrealised_pnl),
+            "Fees": f"${thousand_separator(value=total_fees)}",
+            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})",
+            "Stop-Loss Hit": self.stopped_out
         }
 
         return result_summary
@@ -220,7 +239,7 @@ class StrategyBase(Strategy):
         -------
         None
         """
-        buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares'])
+        buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares', 'stop_loss'])
         sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
 
@@ -232,6 +251,7 @@ class StrategyBase(Strategy):
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
+        transaction_data['exit_type'] = transaction_data.apply(lambda row: 'Stop-Loss' if row['exit_price'] == row['stop_loss'] else 'Standard', axis=1)
         transaction_data: pd.DataFrame = transaction_data[
             ['id',
             'ticker',
@@ -240,7 +260,9 @@ class StrategyBase(Strategy):
             'entry_date',
             'exit_date',
             'entry_price',
+            'stop_loss',
             'exit_price',
+            'exit_type',
             'shares',
             'buying_fee',
             'selling_fee',
@@ -316,10 +338,15 @@ class StrategyBase(Strategy):
         """
         if not self.position:
             if self.buy_signal():
-                size_to_buy: int = math.floor(self.broker.getvalue() / self.data.close[0]) * 0.8
-                self.buy(size=size_to_buy)
+                self.entry_price: float = self.data.close[0]
+                self.size_to_buy: int = math.floor(self.broker.getvalue() / self.entry_price) * 0.8
+                self.stop_loss: float = self.entry_price * (1 - self.params.get('Stop-Loss %'))
+                self.buy(size=self.size_to_buy)
+
         elif self.sell_signal():
             self.sell(size=self.position.size)
+            if self.data.close <= self.stop_loss:
+                self.stopped_out += 1
 
 class RSI_Strategy(StrategyBase):
     """
@@ -377,18 +404,19 @@ class RSI_Strategy(StrategyBase):
         """
         Checks if a sell signal is generated.
 
-        A sell signal is generated when the RSI is above the overbought threshold and there is an existing position.
+        A sell signal is generated when the RSI is above the overbought threshold, or the stop-loss is hit.
 
         Returns
         -------
         bool
-            True if the RSI is above the overbought threshold and there is an existing position, otherwise False.
+            True if the RSI is above the overbought threshold or the stop-loss is hit, otherwise False.
         """
         return (
             self.position.size > 0
             and self.rsi > self.params.get('Overbought')
+            or self.data.close[0] <= self.stop_loss
         )
-
+    
 class GoldenCross(StrategyBase):
     """
     Strategy: Golden Crossover
@@ -463,6 +491,7 @@ class GoldenCross(StrategyBase):
         return (
             self.position.size > 0
             and self.goldencross == -1
+            or self.data.close[0] <= self.stop_loss
             )
 
 class BollingerBands(StrategyBase):
@@ -529,6 +558,7 @@ class BollingerBands(StrategyBase):
         return (
             self.position.size > 0
             and self.data.close[0] >= self.bbands.lines.top[0]
+            or self.data.close[0] <= self.stop_loss
             )
     
 class IchimokuCloud(StrategyBase):
@@ -632,6 +662,7 @@ class IchimokuCloud(StrategyBase):
             and (self.tenkan_sen[0] < self.kijun_sen[0])
             and (self.data.close[0] < self.senkou_span_a[0])
             and (self.data.close[0] < self.senkou_span_b[0])
+            or self.data.close[0] <= self.stop_loss
             )
 
 class MACD(StrategyBase):
@@ -682,6 +713,7 @@ class MACD(StrategyBase):
         return (
             self.position.size > 0
             and self.macd < 0
+            or self.data.close[0] <= self.stop_loss
         )
 
 class GoldenRatio(StrategyBase):

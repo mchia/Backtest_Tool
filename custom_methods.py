@@ -44,7 +44,7 @@ def thousand_separator(value: int|float, decimals=2) -> str:
         A string representation of the number with commas as thousand separators and 
         the specified number of decimal places.
     """
-    num_formatted: str = '${:,.{}f}'.format(value, decimals)
+    num_formatted: str = '{:,.{}f}'.format(value, decimals)
 
     return num_formatted 
 
