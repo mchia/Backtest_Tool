@@ -59,10 +59,9 @@ def get_financial_ratios(ticker):
 # performance = get_financial_ratios(ticker)
 # print(f"The performance of {ticker} is: {performance}")
 
-import datetime
+position_size = 1
+rsi = 10
 
-end_date: datetime.date = datetime.date.today()
+standard_exit: bool = position_size > 0 and rsi > 70
 
-start_date: datetime.date = end_date - datetime.timedelta(days=60)
-
-print(start_date)
+print(standard_exit)

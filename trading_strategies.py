@@ -83,6 +83,7 @@ class StrategyBase(Strategy):
         self.realised_balance: list[float] = []
         self.stop_loss: float|None = None
         self.stopped_out: int = 0
+        self.stop_loss_flag: bool=  None
 
     def start(self) -> None:
         """
@@ -129,7 +130,8 @@ class StrategyBase(Strategy):
                         self.trade_id,
                         self.datas[0].datetime.date(0),
                         order.executed.price,
-                        order.executed.comm
+                        order.executed.comm,
+                        self.stop_loss_flag
                     ]
                 )
             self.bar_executed: int = len(self)
@@ -240,7 +242,7 @@ class StrategyBase(Strategy):
         None
         """
         buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares', 'stop_loss'])
-        sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
+        sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee', 'stop_loss_flag'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
 
         transaction_table: pd.DataFrame = pd.merge(buy_table, sell_table, on='id', how='left')
@@ -251,7 +253,7 @@ class StrategyBase(Strategy):
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
-        transaction_data['exit_type'] = transaction_data.apply(lambda row: 'Stop-Loss' if row['exit_price'] == row['stop_loss'] else 'Standard', axis=1)
+        transaction_data['exit_type'] = transaction_data.apply(lambda row: 'Stop-Loss' if row['stop_loss_flag'] == True else 'Standard', axis=1)
         transaction_data: pd.DataFrame = transaction_data[
             ['id',
             'ticker',
@@ -345,8 +347,6 @@ class StrategyBase(Strategy):
 
         elif self.sell_signal():
             self.sell(size=self.position.size)
-            if self.data.close <= self.stop_loss:
-                self.stopped_out += 1
 
 class RSI_Strategy(StrategyBase):
     """
@@ -411,11 +411,17 @@ class RSI_Strategy(StrategyBase):
         bool
             True if the RSI is above the overbought threshold or the stop-loss is hit, otherwise False.
         """
-        return (
-            self.position.size > 0
-            and self.rsi > self.params.get('Overbought')
-            or self.data.close[0] <= self.stop_loss
-        )
+        if self.position.size > 0:
+            if self.data.close[0] <= self.stop_loss:
+                self.stopped_out += 1
+                self.stop_loss_flag: bool = True
+                return True
+
+            elif self.rsi > self.params.get('Overbought'):
+                self.stop_loss_flag: bool = False
+                return True
+
+        return False
     
 class GoldenCross(StrategyBase):
     """
