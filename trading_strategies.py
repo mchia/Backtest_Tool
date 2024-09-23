@@ -82,8 +82,6 @@ class StrategyBase(Strategy):
 
         self.realised_balance: list[float] = []
         self.stop_loss: float|None = None
-        self.stopped_out: int = 0
-        self.stop_loss_flag: bool=  None
 
     def start(self) -> None:
         """
@@ -120,8 +118,7 @@ class StrategyBase(Strategy):
                         self.datas[0].datetime.date(0),
                         order.executed.price,
                         order.executed.comm,
-                        order.executed.size,
-                        self.stop_loss
+                        order.executed.size
                     ]
                 )
             else:
@@ -130,8 +127,7 @@ class StrategyBase(Strategy):
                         self.trade_id,
                         self.datas[0].datetime.date(0),
                         order.executed.price,
-                        order.executed.comm,
-                        self.stop_loss_flag
+                        order.executed.comm
                     ]
                 )
             self.bar_executed: int = len(self)
@@ -227,8 +223,7 @@ class StrategyBase(Strategy):
             "Realised P/L": pl_value(parameter=realised_pnl),
             "Unrealised P/L": pl_value(parameter=unrealised_pnl),
             "Fees": f"${thousand_separator(value=total_fees)}",
-            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})",
-            "Stop-Loss Hit": self.stopped_out
+            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})"
         }
 
         return result_summary
@@ -241,8 +236,8 @@ class StrategyBase(Strategy):
         -------
         None
         """
-        buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares', 'stop_loss'])
-        sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee', 'stop_loss_flag'])
+        buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares'])
+        sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
 
         transaction_table: pd.DataFrame = pd.merge(buy_table, sell_table, on='id', how='left')
@@ -253,7 +248,6 @@ class StrategyBase(Strategy):
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
-        transaction_data['exit_type'] = transaction_data.apply(lambda row: 'Stop-Loss' if row['stop_loss_flag'] == True else 'Standard', axis=1)
         transaction_data: pd.DataFrame = transaction_data[
             ['id',
             'ticker',
@@ -262,9 +256,7 @@ class StrategyBase(Strategy):
             'entry_date',
             'exit_date',
             'entry_price',
-            'stop_loss',
             'exit_price',
-            'exit_type',
             'shares',
             'buying_fee',
             'selling_fee',
@@ -411,17 +403,11 @@ class RSI_Strategy(StrategyBase):
         bool
             True if the RSI is above the overbought threshold or the stop-loss is hit, otherwise False.
         """
-        if self.position.size > 0:
-            if self.data.close[0] <= self.stop_loss:
-                self.stopped_out += 1
-                self.stop_loss_flag: bool = True
-                return True
-
-            elif self.rsi > self.params.get('Overbought'):
-                self.stop_loss_flag: bool = False
-                return True
-
-        return False
+        return (
+            self.position.size > 0
+            and self.rsi > self.params.get('Overbought')
+            or self.data.close[0] <= self.stop_loss
+        )
     
 class GoldenCross(StrategyBase):
     """

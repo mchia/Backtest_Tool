@@ -125,54 +125,56 @@ class Transactions(observers.BuySell):
         subplot=False,
         plotlinelabels=True,
     )
-    
+
 class Portfolio(Observer):
     """
-    This observer keeps track of the current cash amount and portfolio value in
-    the broker (including the cash)
-
-    Params: None
+    Custom Observer displaying value of the portfolio over the period of backtesting.
+    Values are dynamic:
+        Green: Potfolio Value > Capital
+        Red: Portfolio Value < Capital
     """
-
-    _stclock = True
-
-    params = (
-        ('fund', None),
-    )
-
-    alias: tuple[str] = ('Account Value')
-    lines: tuple[str, str] = ('cash', 'value')
+    alias: tuple[str] = ('Account Value',)
+    lines: tuple[str] = ('gaining', 'losing', 'capital')
 
     plotinfo: dict = dict(
         plot=True,
         subplot=True,
-        plotlinelabels=True
-        )
+        plotlinelabels=True,
+    )
 
     plotlines: dict = dict(
-        value=dict(
-            color='#607D8B',
-            label='Account Value'
-            ),
-        cash=dict(
-            color='red',
-            label='Cash'
-            ),
+        gaining=dict(
+            color='#4CAF50',
+            fillstyle='full',
+            label='Rise',
+            ls='-'
+        ),
+        losing=dict(
+            color='#F44336',
+            fillstyle='full',
+            label='Fall',
+            ls='-',
+        ),
+        capital=dict(
+            color='#B0BEC5',
+            fillstyle='full',
+            label='Base',
+            ls='-'
         )
-    
-    def start(self):
-        if self.p.fund is None:
-            self._fundmode = self._owner.broker.fundmode
-        else:
-            self._fundmode = self.p.fund
+    )
 
-        if self._fundmode:
-            self.plotlines.cash._plotskip = True
-            self.plotlines.value._name = 'FundValue'
+    def __init__(self, capital: float):
+        super().__init__()
+        self.constant_capital: float = capital
 
     def next(self):
-        if not self._fundmode:
-            self.lines.value[0] = value = self._owner.broker.getvalue()
-            self.lines.cash[0] = self._owner.broker.getcash()
-        else:
-            self.lines.value[0] = self._owner.broker.fundvalue
+        account_value: float = self._owner.broker.getvalue()
+
+        self.lines.capital[0]= self.constant_capital
+
+        if account_value > self.constant_capital:
+            self.lines.gaining[0] = account_value
+            self.lines.losing[0] = float('nan')
+        elif account_value < self.constant_capital:
+            self.lines.losing[0] = account_value
+            self.lines.gaining[0] = float('nan')

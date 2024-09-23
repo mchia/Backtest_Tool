@@ -58,10 +58,3 @@ def get_financial_ratios(ticker):
 # ticker = 'BTC-USD'
 # performance = get_financial_ratios(ticker)
 # print(f"The performance of {ticker} is: {performance}")
-
-position_size = 1
-rsi = 10
-
-standard_exit: bool = position_size > 0 and rsi > 70
-
-print(standard_exit)

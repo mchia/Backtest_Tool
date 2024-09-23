@@ -68,7 +68,7 @@ class BacktraderEngine:
         
         # Add default observers manually
         # self.cerebro.addobserver(cv.AccountValue)
-        self.cerebro.addobserver(cv.Portfolio)
+        self.cerebro.addobserver(cv.Portfolio, capital=self.capital)
         self.cerebro.addobserver(cv.Transactions)
 
     def execute(self) -> bt.Cerebro:
