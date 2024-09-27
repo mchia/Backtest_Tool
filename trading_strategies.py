@@ -2,8 +2,8 @@ import math
 import pandas as pd
 import ttkbootstrap as tb
 from backtrader import Strategy, indicators
-from custom_methods import thousand_separator, CustomRSI
 from strategy_params import strategy_params as strat
+from custom_methods import thousand_separator, CustomRSI, CustomEMA, CustomBBands
 
 class StrategyBase(Strategy):
     """
@@ -163,9 +163,12 @@ class StrategyBase(Strategy):
             self.total_gross_losses += abs(gross)
             self.total_net_losses += abs(net)
 
+        realised: float|None = self.cerebro.broker.getcash()
+        unrealised: float = self.cerebro.broker.getvalue()
+
         self.trades += 1
         self.total_fees += fees
-        self.realised_balance.append(self.cerebro.broker.getcash())
+        self.realised_balance.append(realised or unrealised)
         self.trade_results.append(
             [
                 self.trade_id,
@@ -445,8 +448,8 @@ class GoldenCross(StrategyBase):
         self.fast_val: int = self.params.get('Fast EMA')
         self.slow_val: int = self.params.get('Slow EMA')
 
-        self.slow_ema: indicators = indicators.EMA(self.datas[0].close, period=self.fast_val, plotname=f'{self.fast_val}d EMA')
-        self.fast_ema: indicators = indicators.EMA(self.datas[0].close, period=self.slow_val, plotname=f'{self.slow_val}d EMA')
+        self.slow_ema: indicators = CustomEMA(self.datas[0].close, period=self.fast_val, plotname=f'{self.fast_val}d EMA', color='#ff9800')
+        self.fast_ema: indicators = CustomEMA(self.datas[0].close, period=self.slow_val, plotname=f'{self.slow_val}d EMA', color='#673ab7')
         self.goldencross: indicators = indicators.CrossOver(self.slow_ema, self.fast_ema)
 
     def buy_signal(self) -> bool:
@@ -515,7 +518,7 @@ class BollingerBands(StrategyBase):
         -------
         None
         """
-        self.bbands: indicators = indicators.BollingerBands(self.data, period=self.params.get('Period'), devfactor=self.params.get('Standard Dev'))
+        self.bbands: indicators = CustomBBands(self.data, period=self.params.get('Period'), devfactor=self.params.get('Standard Dev'))
 
     def buy_signal(self) -> bool:
         """

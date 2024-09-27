@@ -31,7 +31,6 @@ class MainWindow:
         Returns
         -------
         None
-            This method does not return any values.
         """
         self.root: tb.Window = tb.Window(themename='superhero')
         self.screen_width: int = self.root.winfo_screenwidth()
@@ -292,7 +291,7 @@ class MainWindow:
         self.data_sourcing = tb.Button(master=self.selection_pane, text='Execute Backtest', command=self.execute_backtest)
         self.data_sourcing.pack(anchor='w', pady=20)
 
-    def update_temp_params(self, key, entry):
+    def update_temp_params(self, key, entry) -> None:
         """Updates the temporary parameter dictionary with new values from entry boxes."""
         if key in ['Stop-Loss %', 'Extension Target']:
             self.temp_params[key] = float(entry.get())
@@ -522,5 +521,6 @@ class MainWindow:
         else:
             Messagebox.show_error("No data available to export.")
 
-window = MainWindow()
-window.root.mainloop()
+if __name__ == '__main__':
+    window = MainWindow()
+    window.root.mainloop()

@@ -81,22 +81,41 @@ def convert_number(value: float) -> str:
         case _:
             return f"${value:.2f}"
 
-class CustomRSI(indicators.RSI):
+class CustomEMA(indicators.EMA):
+    plotlines: dict = dict(
+        ema=dict(color='#FF9800', linewidth=1.0)
+    )
+
+    def __init__(self, color='#FF9800', **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.plotlines.ema.color = color  
+        self.plotinfo.subplot = False
+
+class CustomBBands(indicators.BollingerBands):
+    plotlines = dict(
+        mid=dict(ls='-', color='#2962ff'),
+        top=dict(color='#f23645'),
+        bot=dict(color='#089981'),
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    plotlines = dict(
+class CustomRSI(indicators.RSI):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    plotlines: dict = dict(
         rsi=dict(color='#7e57c2', linewidth=1.0)
     )
 
-    plotinfo = dict(
+    plotinfo: dict = dict(
         plot=True,
         subplot=True,
         plotname='RSI',
         plotylimited=True,
-        plotvaluetags=True
+        plotvaluetags=False
     )
-
 
 class Transactions(observers.BuySell):
     """
@@ -145,54 +164,45 @@ class Transactions(observers.BuySell):
 
 class Portfolio(Observer):
     """
-    Custom Observer displaying value of the portfolio over the period of backtesting.
-    Values are dynamic:
-        Green: Potfolio Value > Capital
-        Red: Portfolio Value < Capital
+    Custom Observer displaying the value of the portfolio over the period of backtesting.
+    Preferably contains dynamic colouring if:
+        - Account Value > Capital: Green
+        - Account Value < Capital: Red
+        - Account Value = Capital: Transparent
+    
+    Cannot be achieved without using two separate lines but will cause overlap or disconnect if using float('nan') as a value.
+    Backtrader does not currently support dynamic colouring in Observers.
     """
-    alias: tuple[str] = ('Account Value',)
-    lines: tuple[str] = ('gaining', 'losing', 'capital')
+    alias = ('Portfolio Value',)
+    lines = ('value', 'capital')
 
-    plotinfo: dict = dict(
+    plotinfo = dict(
         plot=True,
         subplot=True,
         plotlinelabels=True,
         plotvaluetags=False
     )
 
-    plotlines: dict = dict(
-        gaining=dict(
-            color='#4CAF50',
+    plotlines = dict(
+        value=dict(
+            color='#2196F3',
             fillstyle='full',
-            label='Rise',
+            label='Portfolio',
             ls='-'
-        ),
-        losing=dict(
-            color='#F44336',
-            fillstyle='full',
-            label='Fall',
-            ls='-',
         ),
         capital=dict(
-            color='#B0BEC5',
+            color='#FF9800',
             fillstyle='full',
-            label='Base',
-            ls='-'
+            label='Capital',
+            ls='--'
         )
     )
 
     def __init__(self, capital: float):
         super().__init__()
-        self.constant_capital: float = capital
+        self.constant_capital = capital
 
     def next(self):
         account_value: float = self._owner.broker.getvalue()
-
-        self.lines.capital[0]= self.constant_capital
-
-        if account_value > self.constant_capital:
-            self.lines.gaining[0] = account_value
-            self.lines.losing[0] = float('nan')
-        elif account_value < self.constant_capital:
-            self.lines.losing[0] = account_value
-            self.lines.gaining[0] = float('nan')
+        self.lines.value[0] = account_value
+        self.lines.capital[0] = self.constant_capital

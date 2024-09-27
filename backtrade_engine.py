@@ -163,7 +163,9 @@ class BackPlotter:
             voloverlay=False,
             volup='#089981',
             voldown='#f23645',
-            plotvaluetags=False
+            plotvaluetags=False,
+            plotlinelabels=False,
+            plotname=''
         )
 
         return fig[0][0]
