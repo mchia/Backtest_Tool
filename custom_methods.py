@@ -1,4 +1,4 @@
-from backtrader import Observer, observers
+from backtrader import Observer, observers, indicators
 
 def patched_plot(self, plotter=None, numfigs=1, iplot=True, start=None, end=None,
                 width=16, height=9, dpi=300, tight=True, use=None, **kwargs):
@@ -81,6 +81,23 @@ def convert_number(value: float) -> str:
         case _:
             return f"${value:.2f}"
 
+class CustomRSI(indicators.RSI):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    plotlines = dict(
+        rsi=dict(color='#7e57c2', linewidth=1.0)
+    )
+
+    plotinfo = dict(
+        plot=True,
+        subplot=True,
+        plotname='RSI',
+        plotylimited=True,
+        plotvaluetags=True
+    )
+
+
 class Transactions(observers.BuySell):
     """
     Customised version of Backtraders BuySell Observer.
@@ -140,6 +157,7 @@ class Portfolio(Observer):
         plot=True,
         subplot=True,
         plotlinelabels=True,
+        plotvaluetags=False
     )
 
     plotlines: dict = dict(

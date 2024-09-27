@@ -162,7 +162,8 @@ class BackPlotter:
             grid=False,
             voloverlay=False,
             volup='#089981',
-            voldown='#f23645'
+            voldown='#f23645',
+            plotvaluetags=False
         )
 
         return fig[0][0]

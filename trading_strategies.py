@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import ttkbootstrap as tb
 from backtrader import Strategy, indicators
-from custom_methods import thousand_separator
+from custom_methods import thousand_separator, CustomRSI
 from strategy_params import strategy_params as strat
 
 class StrategyBase(Strategy):
@@ -366,16 +366,13 @@ class RSI_Strategy(StrategyBase):
     overbought : int
         The RSI value above which a sell signal is generated (default is 70).
     """
-    def initialize_indicators(self) -> None:
-        """
-        Initializes the RSI indicator with the specified period.
-
-        Returns
-        -------
-        None
-        """
-        self.rsi: indicators = indicators.RSI(period=self.params.get('Period'))
-
+    def initialize_indicators(self):
+        self.rsi = CustomRSI(
+            period=self.params.get('Period'),
+            lowerband=self.params.get('Oversold'),
+            upperband=self.params.get('Overbought'),
+            plotname='RSI'
+        )
     def buy_signal(self) -> bool:
         """
         Checks if a buy signal is generated.
