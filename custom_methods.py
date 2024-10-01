@@ -125,13 +125,13 @@ class Transactions(observers.BuySell):
     - Renames 'buy' and 'sell' to 'Entry' and 'Exit' respectively.
     - Adjusts colors to be more muted, making them less bright and less intrusive.
     - Configures bar plot markers to appear above/below the high/low of candles.
-
-    Inherits from
-    -------------
-    observers.BuySell
-        The base observer class for BuySell transactions in Backtrader.
     """
-    
+
+    params: tuple = (
+        ('barplot', True),
+        ('bardist', 0.015)
+    )
+
     plotlines: dict = dict(
         buy=dict(
             marker='^',
@@ -149,11 +149,6 @@ class Transactions(observers.BuySell):
             ls='',
             label='Exit',
         )
-    )
-    
-    params: tuple = (
-        ('barplot', True),
-        ('bardist', 0.02)
     )
 
     plotinfo: dict = dict(

@@ -115,8 +115,8 @@ class DataSourcer:
         company_info: dict = {
             "Ticker": stock_info.get("symbol"),
             "Company Name": stock_info.get("longName"),
-            "Industry": stock_info.get("industry"),
-            "Sector": stock_info.get("sector"),
+            "Industry": stock_info.get("industry") if stock_info.get("industry") else 'Unavailable',
+            "Sector": stock_info.get("sector") if stock_info.get("sector") else 'Unavailable',
             "Market Cap": convert_number(value=stock_info.get("marketCap")),
             "Volume": convert_number(value=stock_info.get("volume")),
             # "Financials": stock.financials

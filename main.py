@@ -212,7 +212,7 @@ class MainWindow:
         """
         Automatically adjusts dates based on selected interval, due to constraints with the Yahoo Finance API.
         1m only has 7 day's worth of data available.
-        Anything <1d only has 60 days worth of data available.
+        Anything < 1d only has 60 days worth of data available.
         """
         interval: str = self.interval.get()
         end_date: datetime.date = datetime.date.today()
@@ -320,7 +320,7 @@ class MainWindow:
         if summary_type == 'trade':
             widget_list: list = self.trade_results
             frame: tb.Frame = self.trade_results_frame
-            value_cols: list[str] = ['Portfolio Value', 'Unrealised P/L', 'Account Value', 'Realised P/L']
+            value_cols: list[str] = ['Portfolio Value', 'Unrealised PnL', 'Account Value', 'Realised PnL', 'Avg PnL (%)', 'Avg PnL ($)']
         elif summary_type == 'profile':
             widget_list: list = self.ticker_profile
             frame: tb.Frame = self.profile_frame
@@ -398,16 +398,13 @@ class MainWindow:
         # Loop through stored widget references and update their styles
         for summary_type, widget_list in self.widget_references.items():
             for label, value_label in widget_list:
-                # Update label bootstyle for consistency with the theme
                 label.config(bootstyle="primary")
 
-                # Determine bootstyle for the value labels based on the theme
                 if summary_type == 'trade':
                     bootstyle = "success" if '▲' in value_label.cget('text') else "danger"
                 else:
                     bootstyle = "dark" if theme not in dark_themes else "light"
-                
-                # Update the value label's bootstyle
+
                 value_label.config(bootstyle=bootstyle)
                 
     def execute_backtest(self) -> None:
@@ -458,16 +455,6 @@ class MainWindow:
             balance: str|None = fields['Starting Balance']
             selected_balance: int|None = int(balance) if balance else None
             
-            missing_fields: list = [name for name, value in fields.items() if not value]
-            if missing_fields:
-                Messagebox.show_error(
-                    message=(f"Please fill out the following fields:\n{'\n'.join(missing_fields)}")
-                )
-
-        except ValueError as e:
-            print(e)
-        
-        else:
             # Intialise DataSourcer and pass relevant parameters.
             source_data: pd.DataFrame = DataSourcer(
                 ticker=fields['Ticker'],
@@ -502,7 +489,13 @@ class MainWindow:
             trade_dict: dict = backtest_output.print_trade_stats()
             self.display_summary(data=trade_dict, summary_type='trade')
 
-            # Initalise BackPlotter
+        except IndexError:
+            Messagebox.show_error(
+                message='No data/trades found.\nCheck the following:\nTicker\nDate Range\nAccount Balance\nTrade Parameters',
+                title='Error: Unavailable'
+            )
+        
+        else:
             plotter = BackPlotter(
                 bt_instance=backtrader
             )

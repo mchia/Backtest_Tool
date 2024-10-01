@@ -1,4 +1,6 @@
 import math
+import statistics
+import numpy as np
 import pandas as pd
 import ttkbootstrap as tb
 from backtrader import Strategy, indicators
@@ -83,6 +85,11 @@ class StrategyBase(Strategy):
         self.realised_balance: list[float] = []
         self.stop_loss: float|None = None
 
+        # Lists for calculating averages and medians.
+        self.trade_durations: list[float] = []
+        self.trade_pnl: list[float] = []
+        self.trade_percentages: list[float] = []
+
     def start(self) -> None:
         """
         Initializes attributes and lists to hold trade data before the strategy starts running.
@@ -115,7 +122,7 @@ class StrategyBase(Strategy):
                 self.buy_transactions.append(
                     [
                         self.trade_id,
-                        self.datas[0].datetime.date(0),
+                        self.datas[0].datetime.datetime(0),
                         order.executed.price,
                         order.executed.comm,
                         order.executed.size
@@ -125,7 +132,7 @@ class StrategyBase(Strategy):
                 self.sell_transactions.append(
                     [
                         self.trade_id,
-                        self.datas[0].datetime.date(0),
+                        self.datas[0].datetime.datetime(0),
                         order.executed.price,
                         order.executed.comm
                     ]
@@ -189,12 +196,12 @@ class StrategyBase(Strategy):
 
         realised_balance: float = self.realised_balance[-1]
         unrealised_balance: float = round(self.cerebro.broker.getvalue(), 2)
-        portfolio_growth: float = 100 * ((unrealised_balance - capital) / capital)
+        portfolio_growth: float = abs(100 * ((unrealised_balance - capital) / capital))
         portfolio_growth: float|int = round(number=portfolio_growth, ndigits=2) if portfolio_growth < 1 else int(round(number=portfolio_growth, ndigits=2))
 
         unrealised_pnl: float = unrealised_balance - realised_balance
         realised_pnl: float = realised_balance - capital
-        realised_growth: int = 100 * ((realised_balance - capital) / capital)
+        realised_growth: int = abs(100 * ((realised_balance - capital) / capital))
         realised_growth: float|int = round(number=realised_growth, ndigits=2) if realised_growth < 1 else int(round(number=realised_growth, ndigits=2))
 
         total_fees: float = abs(round(self.total_fees, 2))
@@ -219,14 +226,52 @@ class StrategyBase(Strategy):
             
             return str_val
         
+        def median_value(values: list, type=str) -> float|str:
+            cleaned_list: list = [x for x in values if not np.isnan(x)]
+            average: float = sum(cleaned_list) / len(cleaned_list) if cleaned_list else 0
+            
+            if type == 'duration':
+                return average
+
+            elif type == '%':
+                average: float|int = round(number=average, ndigits=2) if abs(average) < 1 else int(round(number=average, ndigits=2))
+                if average == 0:
+                    avg: str = f'0{type}'
+                elif average > 0:
+                    avg: str = f'▲ {abs(round(number=average, ndigits=2))}{type}'
+                elif average < 0:
+                    avg: str = f'▼ {abs(round(number=average, ndigits=2))}{type}'
+                return avg
+
+            elif type == '$':
+                if average == 0:
+                    avg: str = f'{type}0'
+                elif average > 0:
+                    avg: str = f'▲ {type}{(thousand_separator(value=abs(average)))}'
+                elif average < 0:
+                    avg: str = f'▼ {type}{(thousand_separator(value=abs(average)))}'
+                return avg
+
+        if 'Minute' in self.interval:
+            interval: str = "Minutes"
+        elif self.interval == 'Hourly':
+            interval: str = "Hours"
+        elif self.interval == 'Weekly':
+            interval: str = "Weeks"
+        else:
+            interval: str = "Days"
+
         result_summary: dict = {
             "Opening Balance": f"${thousand_separator(value=capital)}",
             "Account Value": f"{acc_value(parameter=realised_balance)}{realised_growth}%",
             "Portfolio Value": f"{acc_value(parameter=unrealised_balance)}{portfolio_growth}%",
-            "Realised P/L": pl_value(parameter=realised_pnl),
-            "Unrealised P/L": pl_value(parameter=unrealised_pnl),
+            "Realised PnL": pl_value(parameter=realised_pnl),
+            "Unrealised PnL": pl_value(parameter=unrealised_pnl),
             "Fees": f"${thousand_separator(value=total_fees)}",
-            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})"
+            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})",
+            "Avg Trade Length": f"{int(median_value(values=self.trade_durations, type='duration'))} {interval}",
+            "Avg PnL (%)": f"{median_value(values=self.trade_percentages, type='%')}",
+            "Avg PnL ($)": f"{median_value(values=self.trade_pnl, type='$')}"
         }
 
         return result_summary
@@ -247,7 +292,16 @@ class StrategyBase(Strategy):
         transaction_data: pd.DataFrame = pd.merge(transaction_table, results_table, on='id', how='left')
         transaction_data['total_fees'] = transaction_data['buying_fee'] + transaction_data['selling_fee']
         transaction_data['percentage_gain'] = round((transaction_data['exit_price'] - transaction_data['entry_price']) / transaction_data['entry_price'] * 100, 2)
-        transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.days
+
+        if 'Minute' in self.interval:
+            transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.total_seconds() / 60
+        elif self.interval == 'Hourly':
+            transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.total_seconds() / 3600
+        elif self.interval == 'Weekly':
+            transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.days / 7
+        else:
+            transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.days
+        
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
@@ -271,6 +325,10 @@ class StrategyBase(Strategy):
             'acc_bal']
         ]
 
+        # Append specific data points to list to calculate averages and medians.
+        self.trade_durations.extend(transaction_data['trade_duration'].tolist())
+        self.trade_percentages.extend(transaction_data['percentage_gain'].tolist())
+        self.trade_pnl.extend(transaction_data['net_earnings'].tolist())
         return transaction_data
 
     def initialize_indicators(self) -> None:
@@ -369,7 +427,7 @@ class RSI_Strategy(StrategyBase):
     overbought : int
         The RSI value above which a sell signal is generated (default is 70).
     """
-    def initialize_indicators(self):
+    def initialize_indicators(self) -> None:
         self.rsi = CustomRSI(
             period=self.params.get('Period'),
             lowerband=self.params.get('Oversold'),
@@ -510,7 +568,7 @@ class BollingerBands(StrategyBase):
     stddev : int
         The number of standard deviations for the Bollinger Bands (default is 2).
     """
-    def initialize_indicators(self):
+    def initialize_indicators(self) -> None:
         """
         Initializes the Bollinger Bands indicator.
 
@@ -721,7 +779,7 @@ class GoldenRatio(StrategyBase):
     stop_loss_pct : float
         The percentage of loss to trigger a stop loss.
     """
-    def initialize_indicators(self):
+    def initialize_indicators(self) -> None:
         self.highest: indicators = indicators.Highest(self.data.high, period=self.params.get('Lookback'), plot=False, subplot=False)
         self.lowest: indicators = indicators.Lowest(self.data.low, period=self.params.get('Lookback'), plot=False, subplot=False)
         self.entry_price: float|None = None
@@ -734,7 +792,7 @@ class GoldenRatio(StrategyBase):
             and self.data.close[0] <= (self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618))
         )
 
-    def next(self):
+    def next(self) -> None:
         if not self.position:
             if self.buy_signal():
                 self.entry_price: float = self.data.close[0]

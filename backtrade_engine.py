@@ -67,7 +67,6 @@ class BacktraderEngine:
         self.cerebro.broker.setcommission(commission)
         
         # Add default observers manually
-        # self.cerebro.addobserver(cv.AccountValue)
         self.cerebro.addobserver(cv.Portfolio, capital=self.capital)
         self.cerebro.addobserver(cv.Transactions)
 
