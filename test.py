@@ -1,42 +1,65 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.stats import norm
+import backtrader as bt
+import yfinance as yf
+import pandas as pd
 
-# Sample data (replace these with your actual lists)
-gains = [48858.0, -12915.0, -13521.0, 210580.0, -16332.0, -3556.0, -30354.0, -27472.0, -24342.0, -11647.0, -23178.0, -14960.0, -22854.0, 621.0, -14115.0, 116429.0, -25629.0, 955534.0, 783237.0, -245452.0, 4267611.0, 2843090.0, 4171356.0, -1091154.0, -1178846.0, 696718.0]
-durations = [324.0, 40.0, 37.0, 715.0, 153.0, 103.0, 18.0, 45.0, 28.0, 183.0, 26.0, 127.0, 12.0, 400.0, 8.0, 951.0, 134.0, 1137.0, 577.0, 154.0, 1318.0, 698.0, 834.0, 43.0, 38.0, 372.0]
+class RSIStrategy(bt.Strategy):
+    params = (
+        ('rsi_period', 14),  # Period for RSI calculation
+        ('rsi_overbought', 70),  # RSI threshold to enter a short position
+        ('rsi_oversold', 30),  # RSI threshold to close short and go long
+    )
 
-# Create bell curve for gains
-plt.figure(figsize=(14, 6))
+    def __init__(self):
+        # Add RSI indicator to the strategy
+        self.rsi = bt.indicators.RelativeStrengthIndex(period=self.params.rsi_period)
 
-# Histogram for gains
-plt.subplot(1, 2, 1)
-sns.histplot(gains, bins=10, kde=False, color='skyblue', stat='density')
-mean_gains = np.mean(gains)
-std_gains = np.std(gains)
-xmin, xmax = plt.xlim()  # Get x limits for plotting the bell curve
-x = np.linspace(xmin, xmax, 100)
-p = norm.pdf(x, mean_gains, std_gains)  # Calculate the normal distribution
-plt.plot(x, p, 'k', linewidth=2, label='Bell Curve')
-plt.title('Distribution of Gains ($)')
-plt.xlabel('Gains ($)')
-plt.ylabel('Density')
-plt.legend()
+    def log(self, txt, dt=None):
+        ''' Logging function for strategy'''
+        dt = dt or self.datas[0].datetime.date(0)
+        print(f'{dt.isoformat()}, {txt}')
 
-# Histogram for trade durations
-plt.subplot(1, 2, 2)
-sns.histplot(durations, bins=10, kde=False, color='lightgreen', stat='density')
-mean_durations = np.mean(durations)
-std_durations = np.std(durations)
-xmin, xmax = plt.xlim()  # Get x limits for plotting the bell curve
-x = np.linspace(xmin, xmax, 100)
-p = norm.pdf(x, mean_durations, std_durations)  # Calculate the normal distribution
-plt.plot(x, p, 'k', linewidth=2, label='Bell Curve')
-plt.title('Distribution of Trade Durations (Days)')
-plt.xlabel('Duration (Days)')
-plt.ylabel('Density')
-plt.legend()
+    def next(self):
+        # If we're not in the market, check for entry conditions
+        if not self.position:
+            # Enter a short position if RSI is above the overbought threshold
+            if self.rsi > self.params.rsi_overbought:
+                self.sell()  # Open a short position
+                self.log(f'SELL ORDER EXECUTED: RSI {self.rsi[0]:.2f}, Price {self.data.close[0]:.2f}')
+                
+        # If we're in a short position, check for exit conditions
+        elif self.position.size < 0:
+            # Close the short if RSI is below the oversold threshold
+            if self.rsi < self.params.rsi_oversold:
+                self.close()  # Close the short position
+                self.log(f'CLOSE SHORT: RSI {self.rsi[0]:.2f}, Price {self.data.close[0]:.2f}')
 
-plt.tight_layout()
-plt.show()
+# Create an instance of the Backtrader engine
+cerebro = bt.Cerebro()
+
+# Add the RSI strategy
+cerebro.addstrategy(RSIStrategy)
+
+# Get historical data for a stock using yfinance (Tesla stock in this case)
+data = yf.download(tickers='TSLA', start='2020-01-01', end='2024-09-30', interval='1d')
+data.index = pd.to_datetime(data.index)
+data_feed: bt.feeds.PandasData = bt.feeds.PandasData(dataname=data)
+
+# Add the data to the backtest
+cerebro.adddata(data_feed)
+
+# Set the starting cash for the backtest
+cerebro.broker.setcash(10000)
+
+# Set the commission and margin (this allows shorting with 2% margin)
+cerebro.broker.setcommission(commission=0.001, margin=0.02)  # Simulating margin trading with 2% margin
+
+# Enable cheating-on-close to simulate margin/shorting better
+cerebro.broker.set_coc(True)
+
+# Run the backtest
+print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+cerebro.run()
+print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+
+# Plot the results
+cerebro.plot()

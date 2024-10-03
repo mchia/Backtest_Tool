@@ -112,6 +112,20 @@ class DataSourcer:
         stock: yf.Ticker = yf.Ticker(self.ticker)
         stock_info: dict = stock.info
 
+        insider_holders: str = f"{round(100 * stock_info.get('heldPercentInsiders', 0), 2)}%"
+        institutional_holders: str = f"{round(100 * stock_info.get('heldPercentInstitutions', 0), 2)}%"
+
+        short_ratio: float = stock_info.get('shortRatio', 'N/A')
+        if short_ratio != 'N/A':
+            if short_ratio <= 3:
+                sentiment: str = 'Bullish'
+            elif 3 < short_ratio <= 5:
+                sentiment: str = 'Neutral'
+            elif short_ratio > 5:
+                sentiment: str = 'Bearish'
+        else:
+            sentiment: str = 'N/A'
+
         company_info: dict = {
             "Ticker": stock_info.get("symbol"),
             "Company Name": stock_info.get("longName"),
@@ -119,7 +133,10 @@ class DataSourcer:
             "Sector": stock_info.get("sector") if stock_info.get("sector") else 'Unavailable',
             "Market Cap": convert_number(value=stock_info.get("marketCap")),
             "Volume": convert_number(value=stock_info.get("volume")),
-            # "Financials": stock.financials
+            "% of Shares Held by Insiders": insider_holders,
+            "% of Shares Held by Institutions": institutional_holders,
+            "Short Ratio": short_ratio,
+            "Sentiment": sentiment
         }
 
         return company_info

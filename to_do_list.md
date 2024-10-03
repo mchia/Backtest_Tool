@@ -6,9 +6,7 @@
 - [] Add leverage?
 - [] Add financial data analysis - Fundamental Analysis -> Maybe as a new app/mode.
 
-# In Progress
-- [] Add average time in trade, time protfolio in profit/loss.
-- [] Add average % gain/loss of all trades.
+# In Progress-->
 
 # Not Worth Doing
 - [] Add TradingViews radial gauge via tradingview_ta package.
@@ -21,3 +19,6 @@
 <!-- - [] Text on GUI for trade summary and ticker profiles auto adjusts to light or dark based on themes from ttkboostrap. -->
 <!-- - [] Create trade summary to include correct colouring and % changes. -->
 <!-- - [] Add stop-loss to all strategies. -->
+<!-- - [] Add average % gain/loss of all trades. -->
+<!-- - [] Add average time in trade, time protfolio in profit/loss. -->
+<!-- - [] Add holder information about tickers. 

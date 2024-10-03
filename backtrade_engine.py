@@ -61,7 +61,6 @@ class BacktraderEngine:
         self.display_pane = disp_pane
         self.params: dict|None = params
         self.capital: int = capital
-
         self.cerebro: bt.Cerebro = bt.Cerebro(stdstats=False)
         self.cerebro.broker.set_cash(capital)
         self.cerebro.broker.setcommission(commission)
