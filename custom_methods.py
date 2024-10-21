@@ -139,7 +139,7 @@ class Transactions(observers.BuySell):
             color='#4CAF50',
             fillstyle='full',
             ls='',
-            label='Entry',
+            label='Long',
         ),
         sell=dict(
             marker='v',
@@ -147,7 +147,7 @@ class Transactions(observers.BuySell):
             color='#F44336',
             fillstyle='full',
             ls='',
-            label='Exit',
+            label='Short',
         )
     )
 

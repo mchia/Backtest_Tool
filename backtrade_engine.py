@@ -35,7 +35,7 @@ class BacktraderEngine:
         Configures the cerebro engine with the provided datafeed and strategy, runs the backtest,
         and returns the cerebro instance.
     """
-    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str, commission: float, disp_pane: tb.Frame, params: dict|None) -> None:
+    def __init__(self, capital: int, datafeed: bt.feeds.PandasData, ticker: str, strategy: str, interval: str, commission: float, disp_pane: tb.Frame, params: dict|None, trade_type: int) -> None:
         """
         Initializes the cerebro engine with a capital, datafeed, ticker, and strategy.
 
@@ -49,6 +49,10 @@ class BacktraderEngine:
             The stock ticker symbol (e.g., 'TSLA' for Tesla, 'AAPL' for Apple).
         strategy : str
             The trading strategy to be backtested e.g. MACD, RSI, Golden Crossover etc.
+        trade_type : int
+            The numerical representation of the trade type where:
+                0 = Bearish -> Short Sell
+                1 = Bullish -> Long
 
         Returns
         -------
@@ -61,9 +65,10 @@ class BacktraderEngine:
         self.display_pane = disp_pane
         self.params: dict|None = params
         self.capital: int = capital
+        self.trade_style: int = trade_type
         self.cerebro: bt.Cerebro = bt.Cerebro(stdstats=False)
         self.cerebro.broker.set_cash(capital)
-        self.cerebro.broker.setcommission(commission)
+        self.cerebro.broker.setcommission(commission, leverage=2)
         
         # Add default observers manually
         self.cerebro.addobserver(cv.Portfolio, capital=self.capital)
@@ -85,7 +90,8 @@ class BacktraderEngine:
             ticker=self.ticker,
             interval=self.interval,
             disp_pane=self.display_pane,
-            params=self.params
+            params=self.params,
+            trade_style=self.trade_style
             )
         self.cerebro.run()
         return self.cerebro

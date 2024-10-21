@@ -1,5 +1,4 @@
 import math
-import statistics
 import numpy as np
 import pandas as pd
 import ttkbootstrap as tb
@@ -8,7 +7,7 @@ from strategy_params import strategy_params as strat
 from custom_methods import thousand_separator, CustomRSI, CustomEMA, CustomBBands
 
 class StrategyBase(Strategy):
-    """
+    '''
     Class provides a template for creating custom trading strategies by managing orders,
     tracking trades, and calculating various performance metrics.
 
@@ -46,10 +45,10 @@ class StrategyBase(Strategy):
         Total fees paid.
     trade_id : int
         Unique identifier for each trade.
-    """
+    '''
 
-    def __init__(self, ticker: str, interval: str, capital: int, disp_pane: tb.Frame, params: dict = None) -> None:
-        """
+    def __init__(self, ticker: str, interval: str, capital: int, disp_pane: tb.Frame, trade_style: int, params: dict=None) -> None:
+        '''
         Initializes the strategy with ticker symbol and data interval.
 
         Parameters
@@ -58,12 +57,13 @@ class StrategyBase(Strategy):
             The stock ticker symbol.
         interval : str
             The data interval.
-        """
+        '''
         self.ticker: str = ticker
         self.interval: str = interval
         self.params = params if params else strat.get(self.__class__.__name__)
         self.display_pane = disp_pane
-        self.capita = capital
+        self.capital: int = capital
+        self.trade_style: int = trade_style
         self.initialize_indicators()
 
         self.dataclose: float = self.datas[0].close
@@ -91,18 +91,18 @@ class StrategyBase(Strategy):
         self.trade_percentages: list[float] = []
 
     def start(self) -> None:
-        """
+        '''
         Initializes attributes and lists to hold trade data before the strategy starts running.
 
         Sets the initial capital and prepares lists for storing buy and sell transactions, as well as trade results.
-        """
+        '''
         self.capital: float = self.cerebro.broker.getvalue()
         self.buy_transactions: list = []
         self.sell_transactions: list = []
         self.trade_results: list = []
 
     def notify_order(self, order) -> None:
-        """
+        '''
         Handles order notifications and records transactions.
 
         Parameters
@@ -113,7 +113,7 @@ class StrategyBase(Strategy):
         Returns
         -------
         None
-        """
+        '''
         if order.status in [order.Submitted, order.Accepted]:
             return
 
@@ -142,7 +142,7 @@ class StrategyBase(Strategy):
         self.order: int|None = None
 
     def notify_trade(self, trade) -> None:
-        """
+        '''
         Handles trade notifications and updates trade statistics.
 
         Parameters
@@ -153,7 +153,7 @@ class StrategyBase(Strategy):
         Returns
         -------
         None
-        """
+        '''
         if not trade.isclosed:
             return
 
@@ -188,10 +188,10 @@ class StrategyBase(Strategy):
         self.trade_id += 1
 
     def print_trade_stats(self) -> dict:
-        """
+        '''
         Prints a summary of trade statistics, including account balance, profit, loss, and the number of trades.
         Clears existing row_frames before creating new ones.
-        """
+        '''
         capital: int = int(self.capital)
 
         realised_balance: float = self.realised_balance[-1]
@@ -209,20 +209,20 @@ class StrategyBase(Strategy):
         def acc_value(parameter: float) -> str:
             match parameter:
                 case _ if parameter > capital:
-                    str_val: str = f"▲ ${thousand_separator(value=abs(parameter))}  ▲"
+                    str_val: str = f'▲ ${thousand_separator(value=abs(parameter))}  ▲'
                 case _ if parameter < capital:
-                    str_val: str = f"▼ ${thousand_separator(value=abs(parameter))}  ▼"
+                    str_val: str = f'▼ ${thousand_separator(value=abs(parameter))}  ▼'
 
             return str_val
         
         def pl_value(parameter: float) -> str:
             match parameter:
                 case _ if round(number=parameter, ndigits=0) == 0:
-                    str_val: str = "$0"
+                    str_val: str = '$0'
                 case _ if parameter > 0:
-                    str_val: str = f"▲ ${thousand_separator(value=abs(parameter))}"
+                    str_val: str = f'▲ ${thousand_separator(value=abs(parameter))}'
                 case _ if parameter < 0:
-                    str_val: str = f"▼ ${thousand_separator(value=abs(parameter))}"
+                    str_val: str = f'▼ ${thousand_separator(value=abs(parameter))}'
             
             return str_val
         
@@ -253,37 +253,38 @@ class StrategyBase(Strategy):
                 return avg
 
         if 'Minute' in self.interval:
-            interval: str = "Minutes"
+            interval: str = 'Minutes'
         elif self.interval == 'Hourly':
-            interval: str = "Hours"
+            interval: str = 'Hours'
         elif self.interval == 'Weekly':
-            interval: str = "Weeks"
+            interval: str = 'Weeks'
         else:
-            interval: str = "Days"
+            interval: str = 'Days'
 
         result_summary: dict = {
-            "Opening Balance": f"${thousand_separator(value=capital)}",
-            "Account Value": f"{acc_value(parameter=realised_balance)}{realised_growth}%",
-            "Portfolio Value": f"{acc_value(parameter=unrealised_balance)}{portfolio_growth}%",
-            "Realised PnL": pl_value(parameter=realised_pnl),
-            "Unrealised PnL": pl_value(parameter=unrealised_pnl),
-            "Fees": f"${thousand_separator(value=total_fees)}",
-            "Trades (W/L)": f"{self.trades} ({self.wins}:{self.losses})",
-            "Avg Trade Length": f"{int(median_value(values=self.trade_durations, type='duration'))} {interval}",
-            "Avg PnL (%)": f"{median_value(values=self.trade_percentages, type='%')}",
-            "Avg PnL ($)": f"{median_value(values=self.trade_pnl, type='$')}"
+            'Opening Balance': f'${thousand_separator(value=capital)}',
+            'Account Value': f'{acc_value(parameter=realised_balance)}{realised_growth}%',
+            'Portfolio Value': f'{acc_value(parameter=unrealised_balance)}{portfolio_growth}%',
+            'Realised PnL': pl_value(parameter=realised_pnl),
+            'Unrealised PnL': pl_value(parameter=unrealised_pnl),
+            'Fees': f'${thousand_separator(value=total_fees)}',
+            'Trade Style': 'Short' if self.trade_style == 0 else 'Long',
+            'Trades (W/L)': f'{self.trades} ({self.wins}:{self.losses})',
+            'Avg Trade Length': f'{int(median_value(values=self.trade_durations, type='duration'))} {interval}',
+            'Avg PnL (%)': f'{median_value(values=self.trade_percentages, type='%')}',
+            'Avg PnL ($)': f'{median_value(values=self.trade_pnl, type='$')}'
         }
 
         return result_summary
 
     def trade_logs(self) -> pd.DataFrame:
-        """
+        '''
         Creates and prints detailed trade logs, including entry and exit transactions, fees, and trade results.
 
         Returns
         -------
         None
-        """
+        '''
         buy_table: pd.DataFrame = pd.DataFrame(data=self.buy_transactions, columns=['id', 'entry_date', 'entry_price', 'buying_fee', 'shares'])
         sell_table: pd.DataFrame = pd.DataFrame(data=self.sell_transactions, columns=['id', 'exit_date', 'exit_price', 'selling_fee'])
         results_table: pd.DataFrame = pd.DataFrame(data=self.trade_results, columns=['id', 'gross_earnings', 'net_earnings', 'acc_bal'])
@@ -292,7 +293,15 @@ class StrategyBase(Strategy):
         transaction_data: pd.DataFrame = pd.merge(transaction_table, results_table, on='id', how='left')
         transaction_data['total_fees'] = transaction_data['buying_fee'] + transaction_data['selling_fee']
         transaction_data['percentage_gain'] = round((transaction_data['exit_price'] - transaction_data['entry_price']) / transaction_data['entry_price'] * 100, 2)
+        transaction_data['new_entry_date'] = transaction_data[['entry_date', 'exit_date']].apply(lambda x: min(pd.to_datetime(x['entry_date']), pd.to_datetime(x['exit_date'])), axis=1)
+        transaction_data['new_exit_date'] = transaction_data[['exit_date', 'entry_date']].apply(lambda x: max(pd.to_datetime(x['exit_date']), pd.to_datetime(x['entry_date'])), axis=1)
+        transaction_data.drop(['entry_date', 'exit_date'], axis=1, inplace=True)
 
+        transaction_data.rename(columns={
+            'new_entry_date': 'entry_date',
+            'new_exit_date': 'exit_date'
+        }, inplace=True)
+        
         if 'Minute' in self.interval:
             transaction_data['trade_duration'] = (pd.to_datetime(transaction_data['exit_date']) - pd.to_datetime(transaction_data['entry_date'])).dt.total_seconds() / 60
         elif self.interval == 'Hourly':
@@ -305,11 +314,13 @@ class StrategyBase(Strategy):
         transaction_data['ticker'] = self.ticker
         transaction_data['interval'] = self.interval
         transaction_data['strategy'] = self.__class__.__name__
+        transaction_data['position'] = 'Long' if self.trade_style == 0 else 'Short'
         transaction_data: pd.DataFrame = transaction_data[
             ['id',
             'ticker',
             'interval',
             'strategy',
+            'position',
             'entry_date',
             'exit_date',
             'entry_price',
@@ -332,7 +343,7 @@ class StrategyBase(Strategy):
         return transaction_data
 
     def initialize_indicators(self) -> None:
-        """
+        '''
         Method to initialize strategy-specific indicators.
 
         This method should be implemented by subclasses to set up any technical indicators required by the strategy.
@@ -341,47 +352,20 @@ class StrategyBase(Strategy):
         ------
         NotImplementedError
             If not implemented by the subclass.
-        """
-        raise NotImplementedError("Must be implemented by the subclass")
+        '''
+        raise NotImplementedError('Must be implemented by the subclass')
 
-    def buy_signal(self) -> bool:
-        """
-        Method to define the buy signal condition.
-
-        This method should be implemented by subclasses to provide the logic for generating buy signals.
-
-        Returns
-        -------
-        bool
-            True if a buy signal is generated, otherwise False.
-
-        Raises
-        ------
-        NotImplementedError
-            If not implemented by the subclass.
-        """
-        raise NotImplementedError("Must be implemented by the subclass")
-
-    def sell_signal(self) -> bool:
-        """
-        Method to define the sell signal condition.
-
-        This method should be implemented by subclasses to provide the logic for generating sell signals.
-
-        Returns
-        -------
-        bool
-            True if a sell signal is generated, otherwise False.
-
-        Raises
-        ------
-        NotImplementedError
-            If not implemented by the subclass.
-        """
-        raise NotImplementedError("Must be implemented by the subclass")
+    def position_sizing(self):
+        '''
+        Method to control size of trades based on account balance.
+        '''
+        self.entry_price: float = self.data.close[0]
+        self.position_size: int = math.floor(self.broker.getvalue() / self.entry_price) * 0.8
+        self.stop_loss: float = self.entry_price * (1 - self.params.get('Stop-Loss %')) if self.trade_style == 1 else self.entry_price * (1 + self.params.get('Stop-Loss %'))
+        self.buy(size=self.position_size) if self.trade_style == 1 else self.sell(size=self.position_size)
 
     def next(self) -> None:
-        """
+        '''
         Method called on each iteration of the strategy.
 
         Checks if there is an active position. If not, it evaluates the buy signal and places a buy order if the signal is true.
@@ -390,19 +374,11 @@ class StrategyBase(Strategy):
         Returns
         -------
         None
-        """
-        if not self.position:
-            if self.buy_signal():
-                self.entry_price: float = self.data.close[0]
-                self.size_to_buy: int = math.floor(self.broker.getvalue() / self.entry_price) * 0.8
-                self.stop_loss: float = self.entry_price * (1 - self.params.get('Stop-Loss %'))
-                self.buy(size=self.size_to_buy)
-
-        elif self.sell_signal():
-            self.sell(size=self.position.size)
+        '''
+        raise NotImplementedError('Must be implemented by the subclass')
 
 class RSI_Strategy(StrategyBase):
-    """
+    '''
     Strategy: RSI (Relative Strength Index)
 
     Indicators
@@ -426,7 +402,7 @@ class RSI_Strategy(StrategyBase):
         The RSI value below which a buy signal is generated (default is 30).
     overbought : int
         The RSI value above which a sell signal is generated (default is 70).
-    """
+    '''
     def initialize_indicators(self) -> None:
         self.rsi = CustomRSI(
             period=self.params.get('Period'),
@@ -434,41 +410,41 @@ class RSI_Strategy(StrategyBase):
             upperband=self.params.get('Overbought'),
             plotname='RSI'
         )
-    def buy_signal(self) -> bool:
-        """
-        Checks if a buy signal is generated.
+    
+    def next(self) -> None:
+        '''
+        Method to execute the RSI Strategy for both Long and Short positions.
 
-        A buy signal is generated when the RSI is below the oversold threshold and there is no existing position.
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when the RSI is Overbought.
+            - **Exit Conditions**:
+                - Close the short position when:
+                    - RSI is Oversold.
+                    - Price >= stop-loss.
 
-        Returns
-        -------
-        bool
-            True if the RSI is below the oversold threshold and there is no existing position, otherwise False.
-        """
-        return (
-            self.position.size == 0
-            and self.rsi < self.params.get('Oversold')
-        )
-
-    def sell_signal(self) -> bool:
-        """
-        Checks if a sell signal is generated.
-
-        A sell signal is generated when the RSI is above the overbought threshold, or the stop-loss is hit.
-
-        Returns
-        -------
-        bool
-            True if the RSI is above the overbought threshold or the stop-loss is hit, otherwise False.
-        """
-        return (
-            self.position.size > 0
-            and self.rsi > self.params.get('Overbought')
-            or self.data.close[0] <= self.stop_loss
-        )
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when the RSI is Oversold.
+            - **Exit Conditions**:
+                - Close the long position when:
+                    - RSI is Overbought.
+                    - Price <= stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and self.rsi < self.params.get('Oversold'):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.rsi > self.params.get('Overbought') or self.data.close[0] <= self.stop_loss):
+                self.close()
+        elif self.trade_style == 0:
+            if not self.position and self.rsi > self.params.get('Overbought'):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.rsi < self.params.get('Oversold') or self.data.close[0] >= self.stop_loss):
+                self.close()
     
 class GoldenCross(StrategyBase):
-    """
+    '''
     Strategy: Golden Crossover
 
     Indicators
@@ -494,15 +470,15 @@ class GoldenCross(StrategyBase):
         The period for the fast EMA (default is 50).
     slow : int
         The period for the slow EMA (default is 200).
-    """
+    '''
     def initialize_indicators(self) -> None:
-        """
+        '''
         Initializes the EMA indicators and the crossover detector.
 
         Returns
         -------
         None
-        """
+        '''
         self.fast_val: int = self.params.get('Fast EMA')
         self.slow_val: int = self.params.get('Slow EMA')
 
@@ -510,42 +486,40 @@ class GoldenCross(StrategyBase):
         self.fast_ema: indicators = CustomEMA(self.datas[0].close, period=self.slow_val, plotname=f'{self.slow_val}d EMA', color='#673ab7')
         self.goldencross: indicators = indicators.CrossOver(self.slow_ema, self.fast_ema)
 
-    def buy_signal(self) -> bool:
-        """
-        Checks if a buy signal is generated.
+    def next(self) -> None:
+        '''
+        Method to exectue the Golden Cross Strategy for both Long and Short positions.
 
-        A buy signal is generated when the fast moving average crosses the slow moving average to the upside, and the current price is above the slow MA.
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when the Fast EMA crosses below the Slow EMA.
+            - **Exit Conditions**:
+                - Close the short position when:
+                    - Fast EMA > Slow EMA (indicating a potential reversal)
+                    - Price >= stop-loss.
 
-        Returns
-        -------
-        bool
-            True if the crossover is bullish and the price is above the slow MA, otherwise False.
-        """
-        return (
-            self.position.size == 0
-            and self.goldencross == 1
-            and self.data.close[0] > (self.slow_ema[0] and self.slow_ema[-1])
-            )
-
-    def sell_signal(self) -> bool:
-        """
-        Checks if a sell signal is generated.
-
-        A sell signal is generated when the slow moving average crosses the fast moving average to the downside and there is an existing position.
-
-        Returns
-        -------
-        bool
-            True if the crossover is bearish, otherwise False.
-        """
-        return (
-            self.position.size > 0
-            and self.goldencross == -1
-            or self.data.close[0] <= self.stop_loss
-            )
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when the Fast EMA crosses above the Slow EMA.
+            - **Exit Conditions**:
+                - Close the long position when:
+                    - Fast EMA crosses below the Slow EMA (indicating a potential reversal)
+                    - Price <= stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and (self.goldencross == 1 and self.data.close[0] > (self.slow_ema[0] and self.slow_ema[-1])):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.goldencross == -1 or self.data.close[0] <= self.stop_loss):
+                self.close()
+        elif self.trade_style == 0:
+            if not self.position and (self.goldencross == -1 and self.data.close[0] > (self.slow_ema[-1] and self.slow_ema[0])):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.goldencross == 1 or self.data.close[0] >= self.stop_loss):
+                self.close()
 
 class BollingerBands(StrategyBase):
-    """
+    '''
     Strategy: Bollinger Bands
 
     Indicators
@@ -567,52 +541,51 @@ class BollingerBands(StrategyBase):
         The period for calculating the Bollinger Bands (default is 20).
     stddev : int
         The number of standard deviations for the Bollinger Bands (default is 2).
-    """
+    '''
     def initialize_indicators(self) -> None:
-        """
+        '''
         Initializes the Bollinger Bands indicator.
 
         Returns
         -------
         None
-        """
+        '''
         self.bbands: indicators = CustomBBands(self.data, period=self.params.get('Period'), devfactor=self.params.get('Standard Dev'))
 
-    def buy_signal(self) -> bool:
-        """
-        Checks if a buy signal is generated.
+    def next(self) -> None:
+        '''
+        Method to execute the Bollinger Bands Strategy for both Long and Short Positions.
 
-        A buy signal is generated when the price closes below the bottom of the Bollinger Bands and there is no existing position.
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when the price is at the top of the upper Bollinger Band.
+            - **Exit Conditions**:
+                - Close the short position when either of the following conditions is met:
+                    - Price is at the bottom of the lower Bollinger Band.
+                    - Price goes above stop-loss.
 
-        Returns
-        -------
-        bool
-            True if the price is below the bottom band and there is no existing position, otherwise False.
-        """
-        return (
-            self.position.size == 0
-            and self.data.close[0] <= self.bbands.lines.bot[0]
-            )
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when the price is at the bottom of the lower Bollinger Band.
+            - **Exit Conditions**:
+                - Close the long position when either of the following conditions is met:
+                    - Price is at the top of the upper Bollinger Band.
+                    - Price goes below stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and (self.data.close[0] <= self.bbands.lines.bot[0]):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.data.close[0] >= self.bbands.lines.top[0] or self.data.close[0] <= self.stop_loss):
+                self.close()
+        elif self.trade_style == 0:
+            if not self.position and (self.data.close[0] >= self.bbands.lines.top[0]):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.data.close[0] <= self.bbands.lines.bot[0] or self.data.close[0] >= self.stop_loss):
+                self.close()
 
-    def sell_signal(self) -> bool:
-        """
-        Checks if a sell signal is generated.
-
-        A sell signal is generated when the price closes above the top of the Bollinger Bands and there is an existing position.
-
-        Returns
-        -------
-        bool
-            True if the price is above the top band and there is an existing position, otherwise False.
-        """
-        return (
-            self.position.size > 0
-            and self.data.close[0] >= self.bbands.lines.top[0]
-            or self.data.close[0] <= self.stop_loss
-            )
-    
 class IchimokuCloud(StrategyBase):
-    """
+    '''
     Strategy: Ichimoku Cloud
 
     Indicators
@@ -650,15 +623,15 @@ class IchimokuCloud(StrategyBase):
         The period for the Senkou Span A and B calculations (default is 52).
     shift : int
         The shift for the Chikou Span calculation (default is 26).
-    """
+    '''
     def initialize_indicators(self) -> None:
-        """
+        '''
         Initializes the Ichimoku Cloud indicator components with the specified parameters.
 
         Returns
         -------
         None
-        """
+        '''
         self.ichi: indicators = indicators.Ichimoku(
             tenkan=self.params.get('Tenkan'),
             kijun=self.params.get('Kijun'),
@@ -672,58 +645,53 @@ class IchimokuCloud(StrategyBase):
         self.senkou_span_b: float = self.ichi.senkou_span_b
         self.chikou_span: int = self.ichi.chikou_span(-self.params.get('Shift'))
 
-    def buy_signal(self) -> bool:
-        """
-        Checks if a buy signal is generated.
+    def next(self) -> None:
+        '''
+        Method to execute the Ichimoku Cloud Strategy for both Long and Short Positions.
 
-        A buy signal is generated when:
-        - The Tenkan-sen is above the Kijun-sen.
-        - The closing price is above both the Senkou Span A and Senkou Span B.
-        - There is no existing position.
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when:
+                    - Tenkan-Sen < Kijun-Sen 
+                    - Senkou Span A & B < Price
+            - **Exit Conditions**:
+                - Close the short position when either of the following conditions is met:
+                    - Tenkan-Sen > Kijun-Sen 
+                    - Senkou Span A & B > Price
+                    - Price goes above stop-loss.
 
-        Returns
-        -------
-        bool
-            True if the conditions for a buy signal are met, otherwise False.
-        """
-        return (
-            self.position.size == 0
-            and (self.tenkan_sen[0] > self.kijun_sen[0])
-            and (self.data.close[0] > self.senkou_span_a[0])
-            and (self.data.close[0] > self.senkou_span_b[0])
-            )
-
-    def sell_signal(self) -> bool:
-        """
-        Checks if a sell signal is generated.
-
-        A sell signal is generated when:
-        - The Tenkan-sen is below the Kijun-sen.
-        - The closing price is below both the Senkou Span A and Senkou Span B.
-        - There is an existing position.
-
-        Returns
-        -------
-        bool
-            True if the conditions for a sell signal are met, otherwise False.
-        """
-        return (
-            self.position.size > 0
-            and (self.tenkan_sen[0] < self.kijun_sen[0])
-            and (self.data.close[0] < self.senkou_span_a[0])
-            and (self.data.close[0] < self.senkou_span_b[0])
-            or self.data.close[0] <= self.stop_loss
-            )
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when:
+                    - Tenkan-Sen > Kijun-Sen 
+                    - Senkou Span A & B > Price
+            - **Exit Conditions**:
+                - Close the long position when either of the following conditions is met:
+                    - Tenkan-Sen < Kijun-Sen 
+                    - Senkou Span A & B < Price
+                    - Price goes below stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and (self.tenkan_sen[0] > self.kijun_sen[0]) and (self.data.close[0] > self.senkou_span_a[0]) and (self.data.close[0] > self.senkou_span_b[0]):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.tenkan_sen[0] < self.kijun_sen[0]) and (self.data.close[0] < self.senkou_span_a[0]) and (self.data.close[0] < self.senkou_span_b[0]) or self.data.close[0] <= self.stop_loss:
+                self.close()
+        elif self.trade_style == 0:
+            if not self.position and (self.tenkan_sen[0] < self.kijun_sen[0]) and (self.data.close[0] < self.senkou_span_a[0]) and (self.data.close[0] < self.senkou_span_b[0]):
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.tenkan_sen[0] > self.kijun_sen[0]) and (self.data.close[0] > self.senkou_span_a[0]) and (self.data.close[0] > self.senkou_span_b[0]) or self.data.close[0] >= self.stop_loss:
+                self.close()
 
 class MACD(StrategyBase):
     def initialize_indicators(self) -> None:
-        """
+        '''
         Initializes the RSI indicator with the specified period.
 
         Returns
         -------
         None
-        """
+        '''
         self.macd: indicators = indicators.MACDHisto(
             self.data.close,
             period_me1=self.params.get('Fast MA'),
@@ -733,41 +701,40 @@ class MACD(StrategyBase):
 
         self.crossover: indicators = indicators.CrossOver(self.macd.macd, self.macd.signal)
 
-    def buy_signal(self) -> bool:
-        """
-        Checks if a buy signal is generated.
+    def next(self) -> None:
+        '''
+        Method to execute the MACD Strategy for both Long and Short Positions.
 
-        A buy signal is generated when the RSI is below the oversold threshold and there is no existing position.
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when a MACD crossover to the downside occurs.
+            - **Exit Conditions**:
+                - Close the short position when either of the following conditions is met:
+                    - MACD is greater than 0.
+                    - Price goes above stop-loss.
 
-        Returns
-        -------
-        bool
-            True if the RSI is below the oversold threshold and there is no existing position, otherwise False.
-        """
-        return (
-            self.position.size == 0
-            and self.crossover > 0
-        )
-
-    def sell_signal(self) -> bool:
-        """
-        Checks if a sell signal is generated.
-
-        A sell signal is generated when the RSI is above the overbought threshold and there is an existing position.
-
-        Returns
-        -------
-        bool
-            True if the RSI is above the overbought threshold and there is an existing position, otherwise False.
-        """
-        return (
-            self.position.size > 0
-            and self.macd < 0
-            or self.data.close[0] <= self.stop_loss
-        )
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when the Fast EMA crosses above the Slow EMA.
+            - **Exit Conditions**:
+                - Close the long position when either of the following conditions is met:
+                    - MACD crosses below 0.
+                    - Price goes below stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and self.crossover > 0:
+                StrategyBase.position_sizing(self)
+            elif self.position and self.macd < 0 or self.data.close[0] <= self.stop_loss:
+                self.close()
+        elif self.trade_style == 0:
+            if not self.position and self.crossover < 0:
+                StrategyBase.position_sizing(self)
+            elif self.position and self.macd > 0 or self.data.close[0] >= self.stop_loss:
+                self.close()
 
 class GoldenRatio(StrategyBase):
-    """
+    '''
     Golden Ratio trading strategy based on Fibonacci retracement and extension levels.
 
     Parameters
@@ -778,7 +745,7 @@ class GoldenRatio(StrategyBase):
         The Fibonacci extension level for take profit.
     stop_loss_pct : float
         The percentage of loss to trigger a stop loss.
-    """
+    '''
     def initialize_indicators(self) -> None:
         self.highest: indicators = indicators.Highest(self.data.high, period=self.params.get('Lookback'), plot=False, subplot=False)
         self.lowest: indicators = indicators.Lowest(self.data.low, period=self.params.get('Lookback'), plot=False, subplot=False)
@@ -786,41 +753,47 @@ class GoldenRatio(StrategyBase):
         self.fib_618: float|None = None
         self.fib_extension: float|None = None
 
-    def buy_signal(self) -> bool:
-        return (
-            self.position.size == 0
-            and self.data.close[0] <= (self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618))
-        )
-
     def next(self) -> None:
-        if not self.position:
-            if self.buy_signal():
+        '''
+        Method to execute the Fibonacci 618 Strategy for both Long and Short Positions.
+
+        Position Types:
+        0 = Short
+            - **Entry Condition**: 
+                - Enter a short position when price has pulled back into the golden pocket.
+            - **Exit Conditions**:
+                - Close the short position when either of the following conditions is met:
+                    - Price >= Fibonnaci Extension Target
+                    - Price goes above stop-loss.
+
+        1 = Long
+            - **Entry Condition**: 
+                - Enter a long position when the price has retraced into the golden picket.
+            - **Exit Conditions**:
+                - Close the long position when either of the following conditions is met:
+                    - MACD crosses below 0.
+                    - Price goes below stop-loss.
+        '''
+        if self.trade_style == 1:
+            if not self.position and self.data.close[0] <= (self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618)):
                 self.entry_price: float = self.data.close[0]
-                self.fib_618: float = self.highest[0] - ((self.highest[0] - self.lowest[0]) * 0.618)
                 self.fib_extension: float = self.highest[0] + ((self.highest[0] - self.lowest[0]) * self.params.get('Extension Target'))
-                self.stop_loss: float = self.entry_price * (1 - self.params.get('Stop-Loss %'))
-
-                size_to_buy: int = math.floor(self.broker.getvalue() / self.data.close[0]) * 0.8
-                self.buy(size=size_to_buy)
-
-        else:
-            if self.sell_signal():
-                self.sell(size=self.position.size)
-
-    def sell_signal(self) -> bool:
-        return (
-            self.position.size > 0
-            and (
-                self.data.close[0] >= self.fib_extension
-                or self.data.close[0] <= self.stop_loss
-            )
-        )
+                StrategyBase.position_sizing(self)
+            elif self.position and self.data.close[0] >= self.fib_extension or self.data.close[0] <= self.stop_loss:
+                self.close()
+        elif self.trade_style == 0:  # Short trade
+            if not self.position and self.data.close[0] >= (self.lowest[0] + ((self.highest[0] - self.lowest[0]) * 0.618)):
+                self.entry_price: float = self.data.close[0]
+                self.fib_extension: float = self.lowest[0] - ((self.highest[0] - self.lowest[0]) * self.params.get('Extension Target'))
+                StrategyBase.position_sizing(self)
+            elif self.position and (self.data.close[0] <= self.fib_extension or self.data.close[0] >= self.stop_loss):
+                self.close()
 
 strategies_dict: dict[str, Strategy] = {
-    "MACD Strategy": MACD,
-    "RSI Strategy": RSI_Strategy,
-    "Ichimoku Cloud": IchimokuCloud,
-    "Bollinger Bands": BollingerBands,
-    "Golden Crossover": GoldenCross,
-    "Fibonacci Strategy": GoldenRatio
+    'MACD Strategy': MACD,
+    'RSI Strategy': RSI_Strategy,
+    'Ichimoku Cloud': IchimokuCloud,
+    'Bollinger Bands': BollingerBands,
+    'Golden Crossover': GoldenCross,
+    'Fibonacci Strategy': GoldenRatio
 }

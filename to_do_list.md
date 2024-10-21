@@ -1,12 +1,8 @@
 # To Do List
-- [] Add button to allow user to connect to any database and insert dataframes.
-- [] Forecasting and targets.
 - [] Move GUI from tkinter to a proper website using Django/Flask.
-- [] Add ability to backtest short selling.
-- [] Add leverage?
 - [] Add financial data analysis - Fundamental Analysis -> Maybe as a new app/mode.
 
-# In Progress-->
+# In Progress
 
 # Not Worth Doing
 - [] Add TradingViews radial gauge via tradingview_ta package.
@@ -22,3 +18,4 @@
 <!-- - [] Add average % gain/loss of all trades. -->
 <!-- - [] Add average time in trade, time protfolio in profit/loss. -->
 <!-- - [] Add holder information about tickers. 
+<!-- - [] Add ability to backtest short selling. -->

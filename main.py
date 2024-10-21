@@ -2,8 +2,9 @@ import datetime
 import pandas as pd
 import backtrader as bt
 import ttkbootstrap as tb
-import trading_strategies as sb
+import customtkinter as ctk
 from tkinter import filedialog
+import trading_strategies as sb
 from ttkbootstrap.dialogs import Messagebox
 from data_sourcer import DataSourcer, intervals
 from strategy_params import strategy_params as strat
@@ -138,13 +139,45 @@ class MainWindow:
         self.date_to.pack(anchor='w', pady=5)
 
         # Strategy Selection
-        self.strategies: tb.Label = tb.Label(master=self.selection_pane, text='Strategy', font=subheader_font, anchor='w')
-        self.strategies.pack(anchor='w', pady=(10, 0))
+        self.strategy_frame = tb.Frame(master=self.selection_pane)
+        self.strategy_frame.pack(anchor='w', pady=(10, 0))  # Pack the frame to the left
+
+        # Strategy Label
+        self.strategies: tb.Label = tb.Label(master=self.strategy_frame, text='Strategy', font=subheader_font, anchor='w')
+        self.strategies.pack(side='left', padx=(0, 10))  # Pack the label to the left
+
+        self.bull_bear_switch: ctk.CTkSwitch = ctk.CTkSwitch(
+            master=self.strategy_frame,
+            command=self.toggle_switch, 
+            text='Long',
+            fg_color="#dc3545",
+            progress_color="#198754",
+            bg_color='transparent',
+            border_color='transparent'
+        )
+        self.bull_bear_switch.pack(side='left')
+        self.bull_bear_switch.select()
 
         self.base_strategies: tb.Combobox = tb.Combobox(master=self.selection_pane, values=list(sb.strategies_dict.keys()), width=global_width, font=entry_font)
         self.base_strategies.pack(anchor='w', pady=5)
         self.base_strategies.insert(0, 'RSI Strategy')
         self.base_strategies.bind(sequence="<<ComboboxSelected>>", func=self.display_params)
+
+    def toggle_switch(self) -> None:
+        """
+        Configures the labels text to show either 'Long' or 'Short' depending when switch is interacted with.
+        Note: self.bull_bear_switch.get() will return 0 and 1 only.
+        In this case, 
+        0 = Short
+        1 = Long
+        """
+        
+        if self.bull_bear_switch.get():
+            trade_style: str = 'Long'
+            self.bull_bear_switch.configure(fg_color='#dc3545', progress_color='#198754', text=trade_style, bg='transparent', border_color='transparent')
+        else:
+            trade_style: str = 'Short'
+            self.bull_bear_switch.configure(fg_color='#dc3545', progress_color='#198754', text=trade_style, bg='transparent', border_color='transparent')
 
     def plot_panel(self) -> None:
         """
@@ -355,7 +388,7 @@ class MainWindow:
                 else:
                     bootstyle: str = "dark" if theme not in dark_themes else "light"
                 
-            else:
+            else:                   
                 bootstyle: str = "dark" if theme not in dark_themes else "light"
 
             # Create the value label
@@ -381,6 +414,12 @@ class MainWindow:
         # Update the canvas and root window
         self.canvas.config(bg=theme_bg)
         self.root.config(bg=theme_bg)
+        self.bull_bear_switch.configure(
+        bg_color=theme_bg,
+        border_color=theme_bg,
+        fg_color='#dc3545',
+        progress_color='#198754'
+    )
 
         style.theme_use(themename=selected_theme)
 
@@ -447,7 +486,8 @@ class MainWindow:
                 'End Date': self.date_to.entry.get(),
                 'Interval': self.interval.get(),
                 'Strategy': self.base_strategies.get(),
-                'Commission': self.commission_entry.get()
+                'Commission': self.commission_entry.get(),
+                'Trade Style': self.bull_bear_switch.get()
             }
 
             selected_interval: str|None = intervals.get(fields['Interval'])
@@ -481,7 +521,8 @@ class MainWindow:
                 interval=fields['Interval'],
                 commission=float(fields['Commission']),
                 disp_pane=self.details_pane,
-                params=self.temp_params
+                params=self.temp_params,
+                trade_type=int(fields['Trade Style'])
             ).execute()
 
             backtest_output: list = backtrader.runstrats[0][0]
