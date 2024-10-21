@@ -437,6 +437,7 @@ class RSI_Strategy(StrategyBase):
                 StrategyBase.position_sizing(self)
             elif self.position and (self.rsi > self.params.get('Overbought') or self.data.close[0] <= self.stop_loss):
                 self.close()
+
         elif self.trade_style == 0:
             if not self.position and self.rsi > self.params.get('Overbought'):
                 StrategyBase.position_sizing(self)
@@ -508,12 +509,13 @@ class GoldenCross(StrategyBase):
                     - Price <= stop-loss.
         '''
         if self.trade_style == 1:
-            if not self.position and (self.goldencross == 1 and self.data.close[0] > (self.slow_ema[0] and self.slow_ema[-1])):
+            if not self.position and self.goldencross == 1:
                 StrategyBase.position_sizing(self)
             elif self.position and (self.goldencross == -1 or self.data.close[0] <= self.stop_loss):
                 self.close()
+
         elif self.trade_style == 0:
-            if not self.position and (self.goldencross == -1 and self.data.close[0] > (self.slow_ema[-1] and self.slow_ema[0])):
+            if not self.position and self.goldencross == -1:
                 StrategyBase.position_sizing(self)
             elif self.position and (self.goldencross == 1 or self.data.close[0] >= self.stop_loss):
                 self.close()
@@ -578,6 +580,7 @@ class BollingerBands(StrategyBase):
                 StrategyBase.position_sizing(self)
             elif self.position and (self.data.close[0] >= self.bbands.lines.top[0] or self.data.close[0] <= self.stop_loss):
                 self.close()
+
         elif self.trade_style == 0:
             if not self.position and (self.data.close[0] >= self.bbands.lines.top[0]):
                 StrategyBase.position_sizing(self)
@@ -675,12 +678,13 @@ class IchimokuCloud(StrategyBase):
         if self.trade_style == 1:
             if not self.position and (self.tenkan_sen[0] > self.kijun_sen[0]) and (self.data.close[0] > self.senkou_span_a[0]) and (self.data.close[0] > self.senkou_span_b[0]):
                 StrategyBase.position_sizing(self)
-            elif self.position and (self.tenkan_sen[0] < self.kijun_sen[0]) and (self.data.close[0] < self.senkou_span_a[0]) and (self.data.close[0] < self.senkou_span_b[0]) or self.data.close[0] <= self.stop_loss:
+            elif self.position and ((self.tenkan_sen[0] < self.kijun_sen[0]) and (self.data.close[0] < self.senkou_span_a[0]) and (self.data.close[0] < self.senkou_span_b[0]) or self.data.close[0] <= self.stop_loss):
                 self.close()
+
         elif self.trade_style == 0:
             if not self.position and (self.tenkan_sen[0] < self.kijun_sen[0]) and (self.data.close[0] < self.senkou_span_a[0]) and (self.data.close[0] < self.senkou_span_b[0]):
                 StrategyBase.position_sizing(self)
-            elif self.position and (self.tenkan_sen[0] > self.kijun_sen[0]) and (self.data.close[0] > self.senkou_span_a[0]) and (self.data.close[0] > self.senkou_span_b[0]) or self.data.close[0] >= self.stop_loss:
+            elif self.position and ((self.tenkan_sen[0] > self.kijun_sen[0]) and (self.data.close[0] > self.senkou_span_a[0]) and (self.data.close[0] > self.senkou_span_b[0]) or self.data.close[0] >= self.stop_loss):
                 self.close()
 
 class MACD(StrategyBase):
@@ -723,14 +727,15 @@ class MACD(StrategyBase):
                     - Price goes below stop-loss.
         '''
         if self.trade_style == 1:
-            if not self.position and self.crossover > 0:
+            if not self.position and self.crossover == 1:
                 StrategyBase.position_sizing(self)
-            elif self.position and self.macd < 0 or self.data.close[0] <= self.stop_loss:
+            elif self.position and (self.macd < 0 or self.data.close[0] <= self.stop_loss):
                 self.close()
+
         elif self.trade_style == 0:
-            if not self.position and self.crossover < 0:
+            if not self.position and self.crossover == -1:
                 StrategyBase.position_sizing(self)
-            elif self.position and self.macd > 0 or self.data.close[0] >= self.stop_loss:
+            elif self.position and (self.macd > 0 or self.data.close[0] >= self.stop_loss):
                 self.close()
 
 class GoldenRatio(StrategyBase):
@@ -779,9 +784,10 @@ class GoldenRatio(StrategyBase):
                 self.entry_price: float = self.data.close[0]
                 self.fib_extension: float = self.highest[0] + ((self.highest[0] - self.lowest[0]) * self.params.get('Extension Target'))
                 StrategyBase.position_sizing(self)
-            elif self.position and self.data.close[0] >= self.fib_extension or self.data.close[0] <= self.stop_loss:
+            elif self.position and (self.data.close[0] >= self.fib_extension or self.data.close[0] <= self.stop_loss):
                 self.close()
-        elif self.trade_style == 0:  # Short trade
+
+        elif self.trade_style == 0:
             if not self.position and self.data.close[0] >= (self.lowest[0] + ((self.highest[0] - self.lowest[0]) * 0.618)):
                 self.entry_price: float = self.data.close[0]
                 self.fib_extension: float = self.lowest[0] - ((self.highest[0] - self.lowest[0]) * self.params.get('Extension Target'))

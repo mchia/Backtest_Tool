@@ -79,3 +79,7 @@ dmypy.json
 
 # Windows files
 Thumbs.db
+
+# Ignored Files
+test.py
+to_do_list.md
