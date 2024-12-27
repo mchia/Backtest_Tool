@@ -76,7 +76,7 @@ class DataSourcer:
             empty or an error occurs.
         """
         try:
-            data: pd.DataFrame = yf.download(tickers=self.ticker, start=self.start, end=self.end, interval=self.interval)
+            data: pd.DataFrame = yf.download(tickers=self.ticker, start=self.start, end=self.end, interval=self.interval, multi_level_index=False)
 
             if data.empty:
                 Messagebox.show_error(
