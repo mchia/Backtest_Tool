@@ -76,7 +76,7 @@ class DataSourcer:
             empty or an error occurs.
         """
         try:
-            data: pd.DataFrame = yf.download(tickers=self.ticker, start=self.start, end=self.end, interval=self.interval, multi_level_index=False)
+            data: pd.DataFrame = yf.download(tickers=self.ticker, start=self.start, end=self.end, interval=self.interval)
 
             if data.empty:
                 Messagebox.show_error(
@@ -87,14 +87,20 @@ class DataSourcer:
                     )
                 )
                 return None
+
         except ValueError as e:
             print(f"Error: {e}")
             return None
         
-        data.index = pd.to_datetime(data.index)
-        data_feed: bt.feeds.PandasData = bt.feeds.PandasData(dataname=data)
+        else:
+            data.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
+            data.reset_index(inplace=True)
+            data.columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+            data['Date'] = pd.to_datetime(data['Date'])
+            data.set_index('Date', inplace=True)
+            data_feed: bt.feeds.PandasData = bt.feeds.PandasData(dataname=data)
         
-        return (data_feed, data)
+            return (data_feed, data)
     
     def ticker_profile(self) -> dict:
         """
