@@ -38,6 +38,7 @@ class MainWindow:
         self.screen_height: int = self.root.winfo_screenheight()
         self.root.geometry("%dx%d" % (self.screen_width, self.screen_height))
         self.root.title("Stock Backtesting Tool")
+        self.root.iconphoto(True, tb.PhotoImage(file='backtrader_icon.png')) 
         self.panedwindow: tb.PanedWindow = tb.PanedWindow(self.root, orient='horizontal')
         self.panedwindow.pack(fill='both', expand=True)
         self.param_widgets: list = []
